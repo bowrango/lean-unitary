@@ -1,0 +1,25 @@
+name = "LeanUnitary"
+version = "0.1.0"
+keywords = ["math"]
+defaultTargets = ["LeanUnitary"]
+
+[leanOptions]
+pp.unicode.fun = true # pretty-prints `fun a ↦ b`
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+maxSynthPendingDepth = 3
+weak.linter.style.header = false # Mathlib copyright-header rule
+
+[[require]]
+name = "quantumlib"
+git = "https://github.com/inQWIRE/LeanQuantum"
+rev = "44fc4eb1f4ba512e659deacd3468fda0a764d162"
+
+# Keep mathlib last so its version takes precedence over transitive pins.
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "c1e30e172c8fda21e6776bf1f10351e882ee31b9" # the Mathlib commit LeanQuantum is pinned to
+
+[[lean_lib]]
+name = "LeanUnitary"

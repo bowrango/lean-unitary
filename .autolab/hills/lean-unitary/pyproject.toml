@@ -1,0 +1,9 @@
+[project]
+name = "lean-unitary"
+version = "0.1.0"
+description = "Evaluation environment for lean-unitary"
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8.0"]

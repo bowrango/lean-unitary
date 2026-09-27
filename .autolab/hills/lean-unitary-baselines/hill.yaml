@@ -1,0 +1,17 @@
+spec_version: 2
+name: lean-unitary-baselines
+version: 0.1.0
+
+# What the evaluator reports, in ranking order: every passing report must start
+# with exactly these, and ranking is lexicographic in this order.
+metrics:
+  - {name: milestone_points, direction: max}
+
+# Hard kill for a hung evaluator. Generous because the first evaluation on a machine
+# downloads and builds the pinned Mathlib/Quantumlib once (later runs take minutes).
+watchdog_timeout_s: 5400
+
+params: {}
+
+# The evaluator runs on the host's Lean toolchain (elan), not in a container, because
+# the hill is climbed on the author's own machine via `autolab serve`.

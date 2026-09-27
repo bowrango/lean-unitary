@@ -21,6 +21,15 @@ as close to the lower bound as you can. To our knowledge no construction is know
 bound for `n ≥ 3`, so this is research. The number stands in for the quality of the
 algorithm; a proof that is correct but no better scores the same as the baseline.
 
+**Priority: the general construction.** The goal is a better algorithm for all `n`, i.e. a
+smaller leading coefficient than block-ZXZ's `22/48` (the lower bound's is `12/48`). A better
+recursion lowers the count at every `n`, including 3–8, and it is what the score rewards most
+because n = 6–8 already sit close to the asymptotic ratio. Improvements specific to small registers
+(e.g. a better 3- or 4-qubit construction) are also valuable, especially as base cases: a saving
+there propagates up through the recursion to every larger `n`. What is not the goal is a
+collection of special cases for `n = 3..8` on top of an unchanged general construction; the
+unscored large-`n` ratios in `details.general_n_unscored` show which kind of progress you made.
+
 Treat it as research: read the decompositions and understand exactly where their CNOTs come
 from before changing anything. Productive directions include:
 
@@ -118,7 +127,9 @@ scored. Acceptance requires:
    to a numeral in the kernel for `n = 3..8`.
 4. It depends on no axioms other than `propext`, `Classical.choice` and `Quot.sound`.
 
-`details.per_n` gives each `n`'s bound, lower bound and ratio.
+`details.per_n` gives each `n`'s bound, lower bound and ratio. `details.general_n_unscored`
+reports the same for `n = 12` and `16`: not part of the score, but the best signal of whether the
+general construction improved (block-ZXZ is about 1.833 there, its asymptotic ratio `22/12`).
 
 ## Parameters
 

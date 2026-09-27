@@ -30,8 +30,10 @@ BUILD_FILES = ("lakefile.toml", "lake-manifest.json", "lean-toolchain")
 
 # Qubit counts scored, and the Shende-Markov-Bullock lower bound for each.
 QUBITS = range(3, 9)
-LOWER_BOUND = {n: -(-(4**n - 3 * n - 1) // 4) for n in QUBITS}  # 14, 61, 252, 1020, 4091, 16378
-CHECKER_ARGS = ["general", *map(str, QUBITS)]
+# Larger sizes reported (not scored) so the climber can see progress on the general construction.
+DIAGNOSTIC_QUBITS = (12, 16)
+LOWER_BOUND = {n: -(-(4**n - 3 * n - 1) // 4) for n in (*QUBITS, *DIAGNOSTIC_QUBITS)}
+CHECKER_ARGS = ["general", *map(str, QUBITS), *map(str, DIAGNOSTIC_QUBITS)]
 
 BUILD_TIMEOUT_S = 2400
 CHECK_TIMEOUT_S = 900
@@ -162,16 +164,16 @@ def _score(result: dict, final: bool) -> dict:
     if claim["status"] != "proved":
         return _fail(f"no accepted synthesis theorem: {claim.get('message', claim['status'])}",
                      bounds=claim.get("bounds"))
-    per_n, ratios = {}, []
-    for n in QUBITS:
+    per_n = {}
+    for n in (*QUBITS, *DIAGNOSTIC_QUBITS):
         bound, lb = claim["bounds"][str(n)], LOWER_BOUND[n]
         if bound < lb:
             return _fail(
                 f"proved bound {bound} for n={n} is below the lower bound {lb}; "
                 "the frozen spec must be wrong. Stop and report this to the hill author."
             )
-        ratios.append(bound / lb)
-        per_n[str(n)] = {"bound": bound, "lower_bound": lb, "ratio": round(bound / lb, 6)}
+        per_n[n] = {"bound": bound, "lower_bound": lb, "ratio": round(bound / lb, 6)}
+    ratios = [per_n[n]["bound"] / per_n[n]["lower_bound"] for n in QUBITS]
     return {
         "passed": True,
         "metrics": [{"name": "cnot_ratio", "value": round(sum(ratios) / len(ratios), 6),
@@ -182,7 +184,11 @@ def _score(result: dict, final: bool) -> dict:
             {"name": "lean_toolchain", "value": (FROZEN / "lean-toolchain").read_text().strip(),
              "primary": False},
         ],
-        "details": {"per_n": per_n, "declarations_rechecked": result.get("replayed")},
+        "details": {
+            "per_n": {str(n): per_n[n] for n in QUBITS},
+            "general_n_unscored": {str(n): per_n[n] for n in DIAGNOSTIC_QUBITS},
+            "declarations_rechecked": result.get("replayed"),
+        },
     }
 
 

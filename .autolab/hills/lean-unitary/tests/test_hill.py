@@ -21,6 +21,7 @@ import eval as hill_eval  # noqa: E402
 
 HEADER = "import LeanUnitary.Spec\nopen LeanUnitary.Spec\nnamespace LeanUnitary.Claims\n"
 BLOCK_ZXZ = {3: 19, 4: 95, 5: 423, 6: 1783, 7: 7319, 8: 29655}
+BLOCK_ZXZ_ALL = {n: (22 * 4**n - 72 * 2**n + 80) // 48 for n in (*BLOCK_ZXZ, 12, 16)}
 
 
 def _submission(tmp_path: Path, claims_body: str) -> Path:
@@ -36,7 +37,7 @@ def test_unproved_skeleton_is_not_scored():
     result = run_evaluator(HILL, SKELETON)
     assert not result["passed"]
     assert "sorryAx" in result["details"]["error"]
-    assert result["details"]["bounds"] == {str(n): k for n, k in BLOCK_ZXZ.items()}
+    assert result["details"]["bounds"] == {str(n): k for n, k in BLOCK_ZXZ_ALL.items()}
 
 
 @pytest.mark.skipif(not BASELINE.exists(), reason="no proved baseline algorithm yet")
@@ -75,16 +76,20 @@ def _checked(bounds: dict) -> dict:
 
 
 def test_ratio_arithmetic():
-    report = hill_eval._score(_checked(BLOCK_ZXZ), final=False)
+    report = hill_eval._score(_checked(BLOCK_ZXZ_ALL), final=False)
     expected = sum(BLOCK_ZXZ[n] / hill_eval.LOWER_BOUND[n] for n in BLOCK_ZXZ) / len(BLOCK_ZXZ)
     assert report["metrics"][0]["value"] == pytest.approx(expected, abs=1e-6)
     assert report["metrics"][0]["value"] == pytest.approx(1.657, abs=1e-3)
     optimal = hill_eval._score(_checked(hill_eval.LOWER_BOUND), final=False)
     assert optimal["metrics"][0]["value"] == 1
+    # Large n is reported but does not move the score.
+    worse_large = hill_eval._score(_checked({**BLOCK_ZXZ_ALL, 16: 10 ** 12}), final=False)
+    assert worse_large["metrics"] == report["metrics"]
+    assert set(worse_large["details"]["general_n_unscored"]) == {"12", "16"}
 
 
 def test_bound_below_lower_bound_is_flagged_as_spec_bug():
-    bounds = {**BLOCK_ZXZ, 3: 13}
+    bounds = {**BLOCK_ZXZ_ALL, 3: 13}
     report = hill_eval._score(_checked(bounds), final=False)
     assert not report["passed"]
     assert "spec must be wrong" in report["details"]["error"]

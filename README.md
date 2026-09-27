@@ -36,6 +36,8 @@ lake build           # build LeanQuantum and this project
 | `LeanUnitary/Basic.lean` | Core definitions (`QGate n`, an `n`-qubit gate) |
 | `LeanUnitary/Spec.lean` | Frozen circuit model, `Synthesizable n k`, and the milestone statements; do not edit |
 | `LeanUnitary/Circuit.lean` | Circuit algebra: composition, lifting onto more qubits, CNOT counting |
+| `LeanUnitary/Blocks.lean` | Bridge from the spec's bit-indexed operators to Mathlib's `Matrix.fromBlocks` |
+| `LeanUnitary/LinearAlgebra.lean` | Linear-algebra primitives, derived from Mathlib's spectral theorems |
 | `LeanUnitary/Decomposition/` | One module per milestone (multiplexors, demultiplexing, CSD, two-qubit, QSD, block-ZXZ) |
 | `LeanUnitary/Claims.lean` | The theorems the autolab hills score |
 | `.autolab/hills/lean-unitary-baselines/` | Stage 1 hill: milestone points for QSD and block-ZXZ proofs |

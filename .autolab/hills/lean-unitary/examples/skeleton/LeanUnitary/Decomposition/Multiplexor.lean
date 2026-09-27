@@ -1,4 +1,5 @@
 import LeanUnitary.Circuit
+import LeanUnitary.Blocks
 
 /-!
 # Multiplexed rotations
@@ -16,6 +17,9 @@ quant-ph/0404089):
 * Naively this gives `2^(k+1) - 2` CNOTs. Mirroring one of the two sub-multiplexors cancels
   adjacent CNOTs pairwise, which brings the count to `2^k` (equivalently: the Gray-code
   circuit, with angles given by a Walsh–Hadamard transform of `θ`).
+* This milestone is circuit algebra, not spectral theory: it needs `Circuit.denote_append`, the
+  matrices of CNOT and single-qubit gates, and the two conjugation identities above. For the
+  top qubit as target, `Blocks.mux_last_eq` turns multiplexors into diagonal blocks.
 -/
 
 namespace LeanUnitary.Decomposition

@@ -1,6 +1,8 @@
 import LeanUnitary.Basic
 import LeanUnitary.Spec
 import LeanUnitary.Circuit
+import LeanUnitary.Blocks
+import LeanUnitary.LinearAlgebra
 import LeanUnitary.Decomposition.Multiplexor
 import LeanUnitary.Decomposition.Demultiplex
 import LeanUnitary.Decomposition.CosineSine

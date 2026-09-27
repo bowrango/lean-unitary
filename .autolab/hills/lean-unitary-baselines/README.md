@@ -53,17 +53,46 @@ The repository already contains a skeleton, and you should build on it:
 
 - `LeanUnitary/Circuit.lean`: circuit algebra (`denote_append`, `cnotCount_append`, `lift`
   onto the lower qubits, `cnotCount_lift` proved; `denote_lift` still `sorry`).
+- `LeanUnitary/Blocks.lean`: the bridge from the spec's bit-indexed operators to Mathlib's
+  block matrices. `blockDiag_eq` and `mux_last_eq` (both `sorry`, checked on 2 qubits) turn
+  `blockDiag` and top-qubit multiplexors into `Matrix.fromBlocks`; `ofBlocks_mul` is proved.
+- `LeanUnitary/LinearAlgebra.lean`: the three linear-algebra facts the decompositions need,
+  stated in Mathlib's vocabulary, each with its route from Mathlib: simultaneous
+  diagonalization of commuting Hermitian matrices, diagonalization of unitaries, and the
+  block cosine–sine decomposition.
 - `LeanUnitary/Decomposition/*.lean`: one module per milestone, each stating the milestone
-  with `sorry` and a proof outline with references.
+  with `sorry` and a proof outline that uses the modules above.
 - `LeanUnitary/Claims.lean`: the scored theorems, each forwarding to its module.
 
-Mathlib has the spectral theorem for Hermitian matrices, real symmetric matrices, Kronecker
-products and the unitary group, but no Schur decomposition, no spectral theorem for normal or
-unitary matrices and no cosine–sine decomposition. Expect to build these.
+## Use Mathlib; do not rebuild linear algebra
 
-**Warning:** Quantumlib has a `sorry` of its own (`Quantumlib/Data/Error/Operator.lean`).
-Any claim that depends on it is rejected, so check with `#print axioms` in a scratch file
-outside `LeanUnitary/`.
+The decompositions are known algorithms, and the linear algebra under them is largely in
+Mathlib. The work here is connecting them, not re-deriving spectral theory. **Before proving
+any linear-algebra lemma, search for it**: `exact?` and `apply?`, and grep
+`.lake/packages/mathlib/Mathlib`. Write your own proof only for glue that Mathlib lacks.
+
+| need | Mathlib |
+|---|---|
+| Hermitian / real symmetric spectral theorem | `Matrix.IsHermitian.spectral_theorem`, `.eigenvectorUnitary`, `.eigenvalues` |
+| commuting symmetric operators, joint eigenspaces | `LinearMap.IsSymmetric.directSum_isInternal_of_commute`, `DirectSum.IsInternal.collectedOrthonormalBasis` |
+| matrices ↔ operators | `Matrix.toEuclideanLin`, `Matrix.isHermitian_iff_isSymmetric` |
+| unitaries are normal; unit-modulus eigenvalues | `isStarNormal_of_mem_unitary`, `Unitary.spectrum_subset_circle`, `Complex.norm_eq_one_iff` |
+| square roots, singular values | `Matrix.IsHermitian.cfc`, `Matrix.PosSemidef`, `LinearMap.singularValues` |
+| completing orthonormal families | `Orthonormal.exists_orthonormalBasis_extension`, `gramSchmidtNormed` |
+| block matrices | `Matrix.fromBlocks_multiply`, `Matrix.fromBlocks_diagonal`, `Matrix.fromBlocks_conjTranspose` |
+| unitary group, tensor products | `Matrix.mem_unitaryGroup_iff`, `Matrix.kronecker_mem_unitary` |
+
+What Mathlib does *not* have, and so is genuinely yours to write: the three statements in
+`LeanUnitary/LinearAlgebra.lean` (short derivations from the table above), the bridge in
+`LeanUnitary/Blocks.lean`, and the decompositions themselves.
+
+**Quantumlib (LeanQuantum) will not help with any of this.** It is small (about 2,500 lines):
+gate matrices (Pauli, Hadamard, CNOT, SWAP, phase shifts, a general single-qubit `rotate`), their
+unitarity, Kronecker-product lemmas and Pauli-group algebra. It has no eigenvalues, spectral
+theorems, diagonalization or matrix decompositions. Its tensor products are indexed by
+`Fin (a * c)`, not by the spec's bits, so even its Kronecker lemmas need translating. It also
+contains a `sorry` (`Quantumlib/Data/Error/Operator.lean`); any claim that depends on it is
+rejected, so check with `#print axioms` in a scratch file outside `LeanUnitary/`.
 
 ## Submission format
 

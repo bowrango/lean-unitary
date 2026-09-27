@@ -79,8 +79,10 @@ Do not change `lakefile.toml`, `lake-manifest.json` or `lean-toolchain`, and do 
 `lake update`. Add every new module to `LeanUnitary.lean`, because the whole library must
 build: **a build error anywhere scores nothing**.
 
-Quantumlib has a `sorry` of its own (`Quantumlib/Data/Error/Operator.lean`); a proof that
-depends on it is rejected.
+Reuse what exists: the baseline proofs and their lemmas in `LeanUnitary/`, and Mathlib's linear
+algebra (`LeanUnitary/LinearAlgebra.lean` lists the relevant results). Quantumlib only provides gate
+matrices, and it contains a `sorry` (`Quantumlib/Data/Error/Operator.lean`); a proof that depends
+on it is rejected.
 
 ### Not allowed in submission sources
 

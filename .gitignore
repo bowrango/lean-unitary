@@ -1,3 +1,7 @@
 /.lake
 .DS_Store
 /report
+
+# autolab's local workspace state (hill sources under .autolab/hills stay tracked)
+.autolab/git/
+.autolab/config.json

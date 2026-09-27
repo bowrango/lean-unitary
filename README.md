@@ -21,10 +21,10 @@ lake build           # build LeanQuantum and this project
 
 #### Instructions for the autolab.ai agent
 
-- **Setup:** on a fresh checkout, run `lake exe cache get` before `lake build`. `.lake/` is not committed, and skipping the cache means compiling Mathlib from source, which takes hours.
+- **Setup:** on a fresh checkout, run `lake exe cache get` before `lake build`. `.lake/` is not committed, and skipping the cache means compiling Mathlib from source, which takes hours. On a machine that has already run the evaluator, `mkdir -p .lake && cp -cR ~/.cache/lean-unitary-hill/deps-*/.lake/packages .lake/` copies the prebuilt dependencies instantly instead (an APFS clone on macOS).
 - **Where code goes:** all definitions and theorems belong in modules under `LeanUnitary/`, including the synthesis algorithm itself. `LeanUnitary.lean` holds only `import` lines.
 - **Register new modules:** when you create `LeanUnitary/Foo.lean`, add `import LeanUnitary.Foo` to `LeanUnitary.lean`. `lake build` only compiles modules reachable from `LeanUnitary.lean`, so a module left out is never checked.
-- **Verify:** a change is done only when `lake build` succeeds with no errors and no `sorry` warnings in the modules you touched.
+- **Verify:** `lake build` must succeed with no errors after every change; a build error anywhere scores nothing. `sorry` is allowed in work in progress, but a scored theorem only counts once nothing it depends on uses `sorry`.
 - **Goal and scoring:** two autolab hills define the task and metric. Stage 1, `.autolab/hills/lean-unitary-baselines/README.md`, scores proofs of fixed QSD and block-ZXZ milestones. Stage 2, `.autolab/hills/lean-unitary/README.md`, scores the proved CNOT bound of `LeanUnitary.Claims.synth` against the lower bound. `LeanUnitary/Spec.lean` is frozen; the evaluators replace it with their own copy.
 - **Don't change dependency pins:** leave `lean-toolchain`, `lake-manifest.json`, and the `rev`s in `lakefile.toml` alone, and don't run `lake update` (see [Dependencies](#dependencies)).
 

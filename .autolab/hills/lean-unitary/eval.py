@@ -64,7 +64,7 @@ def _fail(error: str, **details) -> dict:
 
 
 def _strip_comments(src: str) -> str:
-    """Remove `--` line comments and (nested) `/- -/` block comments."""
+    """Remove `--` line comments, (nested) `/- -/` block comments and string literal contents."""
     out, i, depth = [], 0, 0
     while i < len(src):
         two = src[i : i + 2]
@@ -77,6 +77,12 @@ def _strip_comments(src: str) -> str:
         elif two == "--":
             j = src.find("\n", i)
             i = len(src) if j < 0 else j
+        elif src[i] == '"':
+            i += 1
+            while i < len(src) and src[i] != '"':
+                i += 2 if src[i] == "\\" else 1
+            i += 1
+            out.append('""')
         else:
             out.append(src[i])
             i += 1

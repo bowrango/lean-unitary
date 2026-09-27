@@ -131,6 +131,16 @@ There is no held-out data: the statement is public and the proof is checked, not
 
 ## Timing
 
+To build in your own workspace, set up dependencies once. If the evaluator has already run on this
+machine, clone its prebuilt copy (instant on macOS, no extra disk):
+
+```sh
+mkdir -p .lake && cp -cR ~/.cache/lean-unitary-hill/deps-*/.lake/packages .lake/
+lake build
+```
+
+Otherwise run `lake exe cache get` before `lake build`; never let Lake compile Mathlib from source.
+
 The first evaluation on a machine downloads and builds the pinned Mathlib and LeanQuantum
 once. After that, an evaluation takes as long as building your modules plus about a minute of
 checking.

@@ -2,6 +2,9 @@
 .DS_Store
 /report
 
+/research/stage2/__pycache__
+
 # autolab's local workspace state (hill sources under .autolab/hills stay tracked)
 .autolab/git/
 .autolab/config.json
+

@@ -1,130 +1,181 @@
-"""Block-ZXZ with a provable extra fold at every node (C side): 1 CNOT saved per node.
+"""Block-ZXZ with one extra CNOT fold per node: c(n) = (21·4^n − 72·2^n + 96)/48 CNOTs.
 
-At each node, top-qubit gates Rz(α)·Ry(β*) at the input (free) make the eigenphases of the
-block-ZXZ factor C split into two halves with equal sums mod 2π (IVT argument, fold_ivt.py).
-Then the C-side multiplexor's last two CNOTs, CX(q0,top)·CX(q_{n-2},top), have no rotation between
-them and both fold into the middle factor as I ⊕ Z_{q0} Z_{q_{n-2}}.
+At each node a free top-qubit gate u = Rz(α)·Ry(β*) is applied at the input (U is decomposed as
+(U·u)·u†). The parity rule picks α and the intermediate value theorem gives β* (fold_ivt.py),
+so that the eigenphases of the block-ZXZ factor C split into two halves with equal sums mod 2π.
+Placing one half on the lower-register states with top control bit 0 makes the Gray-code angle
+between the input-side multiplexor's last two CNOTs, CX(q0, top) and CX(q_{n-2}, top), vanish.
+Both CNOTs then fold into the central factor as I ⊕ Z_{q0} Z_{q_{n-2}}.
 
-    c(n) = 3 cd(n-1) + c(n-1) + 3·2^(n-1) - 3,   cd = c - 1,   c(2) = 3."""
-import itertools
+Usage: python3 foldzxz.py [n ...]   (default: n = 3 4)
+"""
+import sys
+
 import numpy as np
-from core import (H, Z, block_diag, block_zxz, circuit_matrix, cnot_count, demultiplex, embed,
-                  mux_rot, random_unitary)
-from zxz import leaf
+
+from core import H, Z, block_diag, block_zxz, circuit_matrix, cnot_count, demultiplex, embed, \
+    mux_rot, random_unitary
 from fold_ivt import choose_alpha, top_gate
 from pfaff_general import half_splits
+from zxz import leaf
 
-def gap(mu, S, Sc):
-    x = mu[list(S)].sum() - mu[list(Sc)].sum()
+N_SCAN = 100        # grid points for the sign-change scan of β on [0, π]
+N_BISECT = 50       # bisection steps once a sign change is bracketed
+TOL = 1e-7          # tolerance for an exact balanced split / vanishing Gray angle
+
+
+def wrap(x):
+    """Map angles to (−π, π]."""
     return (x + np.pi) % (2 * np.pi) - np.pi
 
-def find_beta(U, n, alpha, nb=800):
-    """β* ∈ [0,π] with a zero of the tracked fold function (IVT guarantees a sign change), refined by
-    bisection with eigenphases matched to the left end of the bracketing interval"""
-    D = 2 ** (n - 1); splits = half_splits(D)
-    Cof = lambda b: block_zxz(U @ embed(top_gate(alpha, b), [n - 1], n))[3]
-    def track(b, ref_mu, ref_a):
-        lam = np.linalg.eigvals(Cof(b)); a = np.angle(np.prod(lam))
-        a = ref_a + (a - ref_a + np.pi) % (2 * np.pi) - np.pi
-        mu = np.angle(lam * np.exp(-1j * a / D)); order = []
-        for pm in ref_mu:
-            d = np.abs(np.exp(1j * mu) - np.exp(1j * pm)); d[order] = np.inf; order.append(int(np.argmin(d)))
-        mu = mu[order]; mu = ref_mu + (mu - ref_mu + np.pi) % (2 * np.pi) - np.pi
-        g = np.prod(np.sign([np.sin((mu[list(S)].sum() - mu[list(Sc)].sum()) / 2) for S, Sc in splits]))
-        return g, mu, a
-    lam = np.linalg.eigvals(Cof(0.0)); a0 = np.angle(np.prod(lam))
-    mu0 = np.angle(lam * np.exp(-1j * a0 / D))
-    g0 = np.prod(np.sign([np.sin((mu0[list(S)].sum() - mu0[list(Sc)].sum()) / 2) for S, Sc in splits]))
-    prev = (0.0, g0, mu0, a0)
-    for b in np.linspace(0, np.pi, nb + 1)[1:]:
-        g, mu, a = track(b, prev[2], prev[3])
-        if np.sign(g) != np.sign(prev[1]):
-            lo, glo, mlo, alo = prev; hi = b
-            for _ in range(50):
-                mid = (lo + hi) / 2
-                gm, mm, am = track(mid, mlo, alo)
-                if np.sign(gm) == np.sign(glo): lo, glo, mlo, alo = mid, gm, mm, am
-                else: hi = mid
-            return (lo + hi) / 2, None
-        prev = (b, g, mu, a)
-    raise RuntimeError("no sign change (parity rule violated?)")
 
-def gray_phis(th):
-    k = int(np.log2(len(th)))
+def split_sign(mu, splits):
+    """Sign of the test function P = ∏ 2 sin(ψ_S) for eigenphases mu normalized to det 1."""
+    return np.prod(np.sign([np.sin((mu[list(S)].sum() - mu[list(Sc)].sum()) / 2)
+                            for S, Sc in splits]))
+
+
+def c_factor(U, n, alpha, beta):
+    """Block-ZXZ factor C of U·u(α, β), with u acting on the top qubit."""
+    return block_zxz(U @ embed(top_gate(alpha, beta), [n - 1], n))[3]
+
+
+def normalized_phases(C, ref_mu=None, ref_det_phase=None):
+    """Eigenphases of C / det(C)^(1/D). Given a reference point (ref_mu, ref_det_phase), the root
+    and the eigenvalue order are tracked from it so that they vary continuously along a path."""
+    D = C.shape[0]
+    lam = np.linalg.eigvals(C)
+    det_phase = np.angle(np.prod(lam))
+    if ref_det_phase is not None:
+        det_phase = ref_det_phase + wrap(det_phase - ref_det_phase)
+    mu = np.angle(lam * np.exp(-1j * det_phase / D))
+    if ref_mu is not None:                       # match each reference eigenvalue to its nearest
+        order = []
+        for pm in ref_mu:
+            dist = np.abs(np.exp(1j * mu) - np.exp(1j * pm))
+            dist[order] = np.inf
+            order.append(int(np.argmin(dist)))
+        mu = ref_mu + wrap(mu[order] - ref_mu)
+    return mu, det_phase
+
+
+def find_beta(U, n, alpha):
+    """β* ∈ [0, π] at which C(β) has a balanced split: scan for a sign change of the tracked test
+    function (guaranteed by the parity rule), then bisect."""
+    splits = half_splits(2 ** (n - 1))
+
+    def state(beta, ref_mu=None, ref_det_phase=None):
+        mu, det_phase = normalized_phases(c_factor(U, n, alpha, beta), ref_mu, ref_det_phase)
+        return split_sign(mu, splits), mu, det_phase
+
+    lo = 0.0
+    g_lo, mu_lo, a_lo = state(lo)
+    for hi in np.linspace(0, np.pi, N_SCAN + 1)[1:]:
+        g_hi, mu_hi, a_hi = state(hi, mu_lo, a_lo)
+        if g_hi != g_lo:
+            for _ in range(N_BISECT):
+                mid = (lo + hi) / 2
+                g_mid, mu_mid, a_mid = state(mid, mu_lo, a_lo)
+                if g_mid == g_lo:
+                    lo, mu_lo, a_lo = mid, mu_mid, a_mid
+                else:
+                    hi = mid
+            return (lo + hi) / 2
+        lo, g_lo, mu_lo, a_lo = hi, g_hi, mu_hi, a_hi
+    raise RuntimeError("no sign change on [0, π]; parity rule violated?")
+
+
+def walsh_angles(thetas):
+    """Gray-code rotation angles φ_k of the multiplexed rotation with angles θ_j."""
+    k = int(np.log2(len(thetas)))
     gray = [i ^ (i >> 1) for i in range(2**k)]
     sign = np.array([[(-1) ** bin(j & g).count("1") for g in gray] for j in range(2**k)])
-    return np.linalg.solve(sign, th)
+    return np.linalg.solve(sign, thetas)
 
-def demux_double(C, S, Sc):
-    """demultiplex I ⊕ C with eigenvalues of split S on lower states whose top control bit is 0,
-    and branch shifts making the last Gray angle exactly 0"""
+
+def demux_double_fold(C):
+    """Demultiplex I ⊕ C = (I ⊗ V) Δ(θ) (I ⊗ W) so that the last Gray-code angle is exactly 0.
+
+    The eigenvalues of a balanced split S go to the states whose top control bit is 0, and 2π
+    branch shifts (each flipping the sign of one row of W) remove the remaining multiple of 2π/D."""
     D = C.shape[0]
-    V, th, W = demultiplex(np.eye(D, dtype=complex), C)
-    # identify which demultiplex eigenvalues belong to S: match eigenphases of C
-    lamC = np.linalg.eigvals(C)
-    # eigenvalues of I·C† are conj(λ_C); θ_j ≡ ±phase — recompute a split on the actual θ
-    k = int(np.log2(D)); hi_bit = 1 << (k - 1)
-    best = None
-    for SS, SSc in half_splits(D):
-        g = th[list(SS)].sum() - th[list(SSc)].sum()
-        r = abs((g + np.pi) % (2 * np.pi) - np.pi)
-        if best is None or r < best[0]: best = (r, SS, SSc)
-    r, SS, SSc = best
-    assert r < 1e-7, r
-    slots0 = [j for j in range(D) if not j & hi_bit]; slots1 = [j for j in range(D) if j & hi_bit]
-    perm = np.empty(D, int); perm[slots0] = SS; perm[slots1] = SSc
-    V, th, W = V[:, perm], th[perm].copy(), W[perm, :]
-    shifts = np.zeros(D, int)
-    phi = gray_phis(th)[-1]
-    steps = int(round(phi / (2 * np.pi / D)))
-    for _ in range(abs(steps)):          # each +2π on a slot0 entry (or -2π... ) moves φ by ±2π/D
-        j = slots0[_ % len(slots0)]
-        th[j] -= np.sign(steps) * 2 * np.pi; shifts[j] ^= 1
-    assert abs(gray_phis(th)[-1]) < 1e-7, gray_phis(th)[-1]
-    Sg = np.diag([(-1) ** s for s in shifts]).astype(complex)
-    return V, th, Sg @ W
+    V, theta, W = demultiplex(np.eye(D, dtype=complex), C)
+    residual, S, Sc = min((abs(wrap(theta[list(S)].sum() - theta[list(Sc)].sum())), S, Sc)
+                          for S, Sc in half_splits(D))
+    if residual > TOL:
+        raise ValueError(f"C has no balanced split (residual {residual:.1e})")
+
+    top_bit = D // 2
+    slots0 = [j for j in range(D) if not j & top_bit]
+    slots1 = [j for j in range(D) if j & top_bit]
+    perm = np.empty(D, dtype=int)
+    perm[slots0], perm[slots1] = S, Sc
+    V, theta, W = V[:, perm], theta[perm], W[perm, :]
+
+    # φ_last = (Σ_slots0 θ − Σ_slots1 θ)/D, so each 2π shift on a slots0 entry moves it by 2π/D
+    steps = int(round(walsh_angles(theta)[-1] / (2 * np.pi / D)))
+    flips = np.ones(D)
+    for i in range(abs(steps)):
+        j = slots0[i % len(slots0)]
+        theta[j] -= np.sign(steps) * 2 * np.pi
+        flips[j] *= -1                           # R_z(θ + 2π) = −R_z(θ)
+    assert abs(walsh_angles(theta)[-1]) < TOL
+    return V, theta, np.diag(flips) @ W
+
 
 def synth(U, n, want_diag=False):
+    """Circuit for U (up to a returned diagonal if want_diag), as a gate list and that diagonal."""
     if n == 2:
         return leaf(U, want_diag)
-    m, top = 2 ** (n - 1), n - 1
+    top = n - 1
     alpha = choose_alpha(U, n)
-    beta, _ = find_beta(U, n, alpha)
-    G = embed(top_gate(alpha, beta), [top], n)
-    Up = U @ G                                         # U = Up · G†  (G† applied first)
-    A1, A2, B, C = block_zxz(Up)
-    I = np.eye(m, dtype=complex)
-    Va, ta, Wa = demultiplex(A1, A2)
-    Vc, tc, Wc = demux_double(C, None, None)
-    Zc = embed(Z, [n - 2], n - 1)
-    Zf = embed(Z, [n - 2], n - 1) @ embed(Z, [0], n - 1)
-    Vb, tb, Wb = demultiplex(Wa @ Vc, Zc @ Wa @ B @ Vc @ Zf)
-    dc = mux_rot(tc, n)[:-3]                           # drop Rz(0) and the two closing CNOTs
-    da = mux_rot(ta, n)[::-1][1:]
-    hdh = [("u", top, H)] + mux_rot(tb, n) + [("u", top, H)]
-    circ = [("u", top, top_gate(alpha, beta).conj().T)]
-    carry = np.eye(m, dtype=complex)
-    for i, (S, seg) in enumerate(zip([Wc, Wb, Vb, Va], [dc, hdh, da, []])):
-        last = i == 3
-        sub, D = synth(S @ carry, n - 1, want_diag=(not last) or want_diag)
-        circ += sub + seg
-        carry = D
+    u = top_gate(alpha, find_beta(U, n, alpha))
+    A1, A2, B, C = block_zxz(U @ embed(u, [top], n))       # U = (U·u)·u†, u† applied first
+
+    Va, theta_a, Wa = demultiplex(A1, A2)
+    Vc, theta_c, Wc = demux_double_fold(C)
+    z_hi = embed(Z, [n - 2], n - 1)                        # fold from the output-side multiplexor
+    z_both = z_hi @ embed(Z, [0], n - 1)                   # double fold from the input side
+    Vb, theta_b, Wb = demultiplex(Wa @ Vc, z_hi @ Wa @ B @ Vc @ z_both)
+
+    mux_c = mux_rot(theta_c, n)[:-3]                       # drop the two folded CNOTs and Rz(0)
+    mux_a = mux_rot(theta_a, n)[::-1][1:]                  # mirrored; drop the folded CNOT
+    mux_b = [("u", top, H)] + mux_rot(theta_b, n) + [("u", top, H)]
+
+    circ = [("u", top, u.conj().T)]
+    children = [Wc, Wb, Vb, Va]
+    muxes = [mux_c, mux_b, mux_a, []]
+    carry = np.eye(2 ** (n - 1), dtype=complex)            # diagonal passed to the next child
+    for i, (child, mux) in enumerate(zip(children, muxes)):
+        is_last = i == len(children) - 1
+        sub, carry = synth(child @ carry, n - 1, want_diag=want_diag or not is_last)
+        circ += sub + mux
     return circ, block_diag(carry, carry)
 
-def formula(n):
-    c = {2: 3}
-    for k in range(3, n + 1):
-        c[k] = 3 * (c[k - 1] - 1) + c[k - 1] + 3 * 2 ** (k - 1) - 3
-    return c[n]
+
+def cnot_formula(n):
+    """CNOT count of this construction, c(n) = 4c(n−1) + 3·2^(n−1) − 6 with c(2) = 3."""
+    return (21 * 4**n - 72 * 2**n + 96) // 48
+
+
+def zxz_formula(n):
+    """CNOT count of block-ZXZ, (22·4^n − 72·2^n + 80)/48."""
+    return (22 * 4**n - 72 * 2**n + 80) // 48
+
+
+def main(ns, samples=1, seed=0):
+    rng = np.random.default_rng(seed)
+    for n in ns:
+        for _ in range(samples):
+            U = random_unitary(2**n, rng)
+            circ, diag = synth(U, n)
+            M = diag @ circuit_matrix(circ, n)
+            phase = np.vdot(M.ravel(), U.ravel())
+            phase /= abs(phase)
+            print(f"n={n}: {cnot_count(circ)} CNOTs (formula {cnot_formula(n)}, "
+                  f"block-ZXZ {zxz_formula(n)}), "
+                  f"max |U - e^(iφ)·circuit| = {np.max(np.abs(U - phase * M)):.1e}", flush=True)
+
 
 if __name__ == "__main__":
-    import sys
-    rng = np.random.default_rng(11)
-    for n in [int(a) for a in sys.argv[1:]] or [3, 4]:
-        for t in range(2):
-            U = random_unitary(2**n, rng)
-            circ, D = synth(U, n)
-            M = D @ circuit_matrix(circ, n)
-            ph = np.vdot(M.ravel(), U.ravel()); ph /= abs(ph)
-            print(f"n={n}: {cnot_count(circ)} CNOTs (formula {formula(n)}, block-ZXZ {(22*4**n-72*2**n+80)//48}), "
-                  f"max |U - e^(iφ)·circuit| = {np.max(np.abs(U - ph*M)):.1e}", flush=True)
+    main([int(a) for a in sys.argv[1:]] or [3, 4])

@@ -5,7 +5,7 @@
 \usepackage{bm}
 \usepackage{tikz}
 \usetikzlibrary{quantikz2}
-\colorlet{cnew}{red!70!black}
+\colorlet{cnew}{blue!60!cyan!80!black}
 \tikzset{muxctrl/.style={minimum width=6pt, minimum height=6pt, inner sep=0pt},
   newgate/.style={fill=cnew!12, draw=cnew, thick}}
 \usepackage{float}
@@ -18,23 +18,16 @@
 \newcommand{\CZ}{\mathrm{CZ}}
 \newcommand{\Pf}{\operatorname{Pf}}
 
-\title{One more fold per node: block-ZXZ synthesis with\\ $\tfrac{21}{48}4^n$ CNOT gates}
+\title{One more fold per node: Block-ZXZ synthesis with\\ $\tfrac{21}{48}4^n$ CX gates}
 \author{Matt Bowring\\[2pt]
 {\normalsize Elmore Family School of Electrical and Computer Engineering, Purdue University}}
-\date{September 28, 2026}
+\date{\today}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-The block-ZXZ decomposition of Krol and Al-Ars synthesizes an arbitrary $n$-qubit unitary with
-$\tfrac{22}{48}4^n-\tfrac32 2^n+\tfrac53$ CNOT gates, the best known count for an exact analytic
-method. We show that every recursion node admits one further CNOT cancellation. A free single-qubit
-gate $u$ on the top qubit at each node can always be chosen so that the input-side multiplexed
-rotation folds two CNOTs into the central factor instead of one. A parity rule for
-one angle and the intermediate value theorem for the other prove the choice exists. The result
-is $\tfrac{21}{48}4^n-\tfrac32 2^n+2$ CNOTs, i.e.\ $18$ for a general three-qubit unitary
-(previously $19$) and $(4^{n-2}-1)/3$ fewer than block-ZXZ for every $n\ge 3$.
+The best known analytical method for unitary synthesis requires $\sim\tfrac{22}{48}4^n$ CX gates for an arbitrary $n$-qubit unitary. We report an improvement using $\sim\tfrac{21}{48}4^n$: a free single-qubit gate can remove a CX at each recursive step and a parity rule with the intermediate value theorem shows that it always exists. We verify the improved decomposition with numerical experiments.
 \end{abstract}
 
 %==========================================================================================
@@ -43,27 +36,27 @@ is $\tfrac{21}{48}4^n-\tfrac32 2^n+2$ CNOTs, i.e.\ $18$ for a general three-qubi
 \subsection{The synthesis problem}
 
 A quantum algorithm is ultimately compiled into a circuit of hardware gates. The standard
-target is the gate set $\{\text{CNOT}\}\cup U(2)$. Here single-qubit gates are comparatively
-cheap and accurate, so the number of CNOTs is the usual measure of circuit cost. For a generic
-$n$-qubit unitary $U\in U(2^n)$ the question is how few CNOTs suffice to realize $U$
+target is the gate set $\{\CX\}\cup U(2)$, where $\CX$ is the controlled-NOT. Here single-qubit gates are comparatively
+cheap and accurate, so the number of CX gates is the usual measure of circuit cost. For a generic
+$n$-qubit unitary $U\in U(2^n)$ the question is how few CX gates suffice to realize $U$
 \emph{exactly}, for every $U$. A parameter count gives a lower bound: $U(2^n)$ has dimension
-$4^n$, and each CNOT can add at most four parameters to the circuit once the surrounding
+$4^n$, and each CX can add at most four parameters to the circuit once the surrounding
 single-qubit gates are accounted for. Hence~\cite{smb}
 \[
 c_{\min}(n)\ \ge\ \big\lceil \tfrac14(4^n-3n-1)\big\rceil \approx \tfrac{12}{48}\,4^n .
 \]
-Known constructions attain this only for $n\le2$ (three CNOTs suffice for any two-qubit
+Known constructions attain this only for $n\le2$ (three CX gates suffice for any two-qubit
 unitary). For $n\ge3$ the gap sits in the \emph{leading coefficient}: the best constructions
 cost $a\cdot4^n+O(2^n)$ with $a>\tfrac{12}{48}$. Lowering $a$ is the only way to gain a constant
 fraction of the circuit for large $n$.
 
-\subsection{State of the art: QSD and block-ZXZ}
+\subsection{State of the art: QSD and Block-ZXZ}
 
 The best analytic methods are recursive. They split off the top qubit $t=q_{n-1}$, write $U$ in
 terms of four $(n-1)$-qubit unitaries and three \emph{multiplexed rotations}, and recurse down to
 two-qubit leaves. A multiplexed rotation $\Delta(\theta)=\sum_j|j\rangle\langle j|\otimes
 R_z(\theta_j)$ applies a different $R_z$ rotation to $t$ for each basis state $j$ of the lower
-register. With $n-1$ controls it costs $D=2^{n-1}$ CNOTs in Gray-code form~\cite{mottonen}.
+register. With $n-1$ controls it costs $D=2^{n-1}$ CX gates in Gray-code form~\cite{mottonen}.
 Multiplexors arise from \emph{demultiplexing}: every block-diagonal
 $U_1\oplus U_2$ (meaning $U_1$ when $t=0$ and $U_2$ when $t=1$) factors as
 \begin{equation}\label{eq:demux}
@@ -74,7 +67,7 @@ so the angles $\theta_j$ are the eigenphases of $U_1U_2^\dagger$ up to sign.
 
 The quantum Shannon decomposition (QSD)~\cite{smb} obtains the four sub-unitaries from a
 cosine--sine decomposition. With its optimizations it uses $\tfrac{23}{48}4^n-\tfrac32
-2^n+\tfrac43$ CNOTs. The block-ZXZ decomposition~\cite{zxz} replaces the cosine--sine step by the
+2^n+\tfrac43$ CX gates. The Block-ZXZ decomposition~\cite{zxz} replaces the cosine--sine step by the
 factorization
 \begin{equation}\label{eq:zxz}
 U=(A_1\oplus A_2)\,(H\otimes I)\,(I\oplus B)\,(H\otimes I)\,(I\oplus C),\qquad
@@ -84,21 +77,21 @@ where $X$ and $Y$ are the top-row $D\times D$ blocks of $U$ and $X=S_XU_X$, $Y=S
 polar decompositions. Demultiplexing the three block-diagonal factors by~\eqref{eq:demux} gives
 the node of Fig.~\ref{fig:node}.
 
-Its CNOT savings come from \emph{folds}. The last CNOT $\CX(q,t)$ of an outer multiplexor
-(control $q$, target $t$) meets the Hadamard of the central factor. There
+Its CX savings come from \emph{folds}. The gate $\CX(q,t)$ (control $q$, target $t$) at the
+inner end of an outer multiplexor meets a Hadamard of the central factor. There
 $(H\otimes I)\,\CX(q,t)=\CZ(q,t)\,(H\otimes I)$, and $\CZ(q,t)=I\oplus Z_q$ is itself
-block-diagonal, so it is absorbed into the central factor before that factor is demultiplexed.
-This removes one CNOT from each outer multiplexor. Two-qubit leaves cost $3$ CNOTs, or $2$ up to
+block-diagonal, so it is merged into the central factor before that factor is demultiplexed.
+Block-ZXZ merges two CX gates this way, one from each outer multiplexor. Two-qubit leaves cost $3$ CX gates, or $2$ up to
 a diagonal that migrates into the next leaf. Together these give
 $c_{\rm ZXZ}(n)=4c_{\rm ZXZ}(n-1)+3\cdot2^{n-1}-5$, i.e.\ $\tfrac{22}{48}4^n-\tfrac32 2^n+\tfrac53$,
-the best known analytic count. It is $19$ CNOTs for three qubits (QSD: $20$).
+the best known analytic count.
 
 Numerical optimization does better on small registers. Brick-wall templates reach the lower
 bound for $n\le5$ in numerical experiments~\cite{brickwall}, and gradient methods find
 near-optimal circuits~\cite{squander}. These methods give no formula for the parameters and no
 guarantee that every $U$ is reached, and the universality of the lower-bound templates is
-conjectural. For guaranteed, exact synthesis the leading coefficient had moved only from
-$\tfrac{23}{48}$ (2004) to $\tfrac{22}{48}$ (2024).
+conjectural. For exact guaranteed synthesis, it took 20 years to move the leading coefficient from
+$\tfrac{23}{48}$ to $\tfrac{22}{48}$, and in this work, we obtain $\tfrac{21}{48}$.
 
 \begin{figure}[t]
 \centering
@@ -108,45 +101,17 @@ $\tfrac{23}{48}$ (2004) to $\tfrac{22}{48}$ (2024).
 \end{quantikz}
 \;=\;
 \begin{quantikz}[column sep=0.3cm, row sep={0.8cm,between origins}]
-& & \gate[style=newgate]{u^\dagger} & & \gate[style=newgate]{R_z}\vqw{1} & & \gate{H} & \gate{R_z}\vqw{1} & \gate{H} & & \gate{R_z}\vqw{1} & & \\
-& \qwbundle{} & & \gate{W_c} & \gate[style=muxctrl]{} & \gate{V_c} & \gate{W_b} & \gate[style=muxctrl]{} & \gate{V_b} & \gate{W_a} & \gate[style=muxctrl]{} & \gate{V_a} & \\
-\setwiretype{n} & & \text{\scriptsize\color{cnew}free} & & \text{\scriptsize\color{cnew}$\Delta_c$: $D{-}2$} & & & \text{\scriptsize$\Delta_b$: $D$} & & & \text{\scriptsize$\Delta_a$: $D{-}1$} & &
+& & \gate[style=newgate]{u^\dagger} & & \gate[style=newgate]{R_z}\vqw{1} & \gate{H} & \gate{R_z}\vqw{1} & \gate{H} & \gate{R_z}\vqw{1} & & \\
+& \qwbundle{} & & \gate{\phantom{W}} & \gate[style=muxctrl]{} & \gate{\phantom{W}} & \gate[style=muxctrl]{} & \gate{\phantom{W}} & \gate[style=muxctrl]{} & \gate{\phantom{W}} &
 \end{quantikz}
-\caption{A block-ZXZ node with the free gate of this work (time runs left to right). The top wire
-is $t=q_{n-1}$ and the bundle is the lower $n-1$ qubits. Demultiplexing the three block-diagonal
-factors $I\oplus C$, the central factor and $A_1\oplus A_2$ of~\eqref{eq:zxz} by~\eqref{eq:demux}
-gives the $(n-1)$-qubit unitaries $W,V$ and three multiplexed $R_z$ rotations
-$\Delta_c,\Delta_b,\Delta_a$ on $t$ (square: multiplexing control). $V_c$ merges with $W_b$ and
-$V_b$ with $W_a$, leaving four children that are synthesized recursively. The bottom row gives
-the CNOT cost of each multiplexor. Block-ZXZ folds one CNOT of each outer multiplexor through the
-adjacent Hadamard. The contribution of this work is the free gate $u^\dagger$ (red): the node
-decomposes $U(u\otimes I)$ with $u=R_z(\alpha)R_y(\beta^\ast)$, for which $C$ has a balanced split
-$S$. Placing $S$ on $j_{n-2}=0$ makes $\Delta_c$ give up two CNOTs instead of one
-(Fig.~\ref{fig:fold}). For $n=3$ the node drops from $19$ to $18$ CNOTs.}
+\caption{One step of the recursive decomposition. We extend Block-ZXZ with a free single-qubit gate
+$u^\dagger$ on the top qubit, which allows the first multiplexed rotation (blue highlight) to use one fewer CX gate. This pattern is repeated on the four $(n-1)$-qubit children, leading to $(4^{n-2}-1)/3$ fewer CX gates.}
 \label{fig:node}
 \end{figure}
 
 \subsection{Contribution}
 
-The contribution is a single free gate. Each node decomposes $U(u\otimes I)$ instead of $U$,
-where $u$ is a single-qubit gate on the top qubit; its inverse $u^\dagger$ is placed at the input
-of the node and costs no CNOTs (Fig.~\ref{fig:node}). The gate $u$ changes the factor $C$. We
-show that with $u=R_z(\alpha)R_y(\beta^\ast)$, for suitable $\alpha$ and $\beta^\ast$, the
-eigenphases of $C$ split into two halves $S$ and $S^c$ with equal sums modulo $2\pi$
-(Sec.~\ref{sec:exist}). Placing $S$ on the basis states with $j_{n-2}=0$ removes the rotation
-between the last two CNOTs of the input-side multiplexor, and both CNOTs fold into the central
-factor instead of one (Sec.~\ref{sec:fold}, Fig.~\ref{fig:fold}). The result is an exact
-construction with
-\[
-c(n)=\tfrac{21}{48}4^n-\tfrac32 2^n+2
-\]
-CNOTs: one fewer per recursion node, a lower leading coefficient, and $18$ CNOTs for a general
-three-qubit unitary.
-Table~\ref{tab:counts} compares this count with the previous analytic methods and the lower
-bound. The saving over block-ZXZ is $(4^{n-2}-1)/3$, one CNOT per recursion node: $1$ for three
-qubits, $5$ for four, $85$ for six.
-
-\begin{table}[t]
+\begin{table}[!b]
 \centering
 \begin{tabular}{@{}lrrrrrrl@{}}
 \toprule
@@ -157,12 +122,30 @@ QSD (optimized)~\cite{smb} & 0 & 3 & 20 & 100 & 444 & 1868 & $(23/48)\cdot4^n-(3
 Block-ZXZ~\cite{zxz} & 0 & 3 & 19 & 95 & 423 & 1783 & $(22/48)\cdot4^n-(3/2)\cdot2^n+(5/3)$\\
 \textbf{This work} & \textbf{0} & \textbf{3} & \textbf{18} & \textbf{90} & \textbf{402} & \textbf{1698} & $\boldsymbol{(21/48)\cdot4^n-(3/2)\cdot2^n+2}$\\
 \midrule
-Theoretical lower bound~\cite{smb} & 0 & 3 & 14 & 61 & 252 & 1020 & $(1/4)\cdot(4^n-3n-1)$\\
+Theoretical lower bound & 0 & 3 & 14 & 61 & 252 & 1020 & $(1/4)\cdot(4^n-3n-1)$\\
 \bottomrule
 \end{tabular}
-\caption{CNOT counts for exact synthesis of a generic $n$-qubit unitary.}
+\caption{CX counts for exact synthesis of a generic $n$-qubit unitary.}
 \label{tab:counts}
 \end{table}
+
+The contribution is a single free gate. Each node decomposes $U(u\otimes I)$ instead of $U$,
+where $u$ is a single-qubit gate on the top qubit; its inverse $u^\dagger$ is placed at the start
+of the node and costs no CX gates (Fig.~\ref{fig:node}). The gate $u$ changes the factor $C$. We
+show that with $u=R_z(\alpha)R_y(\beta^\ast)$, for suitable $\alpha$ and $\beta^\ast$, the
+eigenphases of $C$ split into two halves $S$ and $S^c$ with equal sums modulo $2\pi$
+(Sec.~\ref{sec:exist}). Placing $S$ on the basis states with $j_{n-2}=0$ removes the rotation
+between the last two CX gates of the left-side multiplexor, so both fold into the central factor
+instead of one: three CX gates are merged per node instead of Block-ZXZ's two (Sec.~\ref{sec:fold},
+Fig.~\ref{fig:fold}). The result is an exact
+construction with
+\[
+c(n)=\tfrac{21}{48}4^n-\tfrac32 2^n+2
+\]
+CX gates, one fewer than Block-ZXZ at each of its $(4^{n-2}-1)/3$ recursion nodes.
+Table~\ref{tab:counts} compares this count with the previous analytic methods and the lower
+bound.
+
 
 %==========================================================================================
 \section{An improved algorithm}
@@ -172,285 +155,190 @@ Qubits are ordered with $t$ most significant, so $U=\begin{psmallmatrix}X&Y\\ \a
 \end{psmallmatrix}$ in $D\times D$ blocks. Circuits are drawn left to right in time. Operator
 products act right to left.
 
-Block-ZXZ merges one CNOT from each of the two outer multiplexors into the central
-multiplexor. In this section we show that the input-side multiplexor can give up a second CNOT,
-provided the single-qubit gate on the top qubit at the input of the node is chosen correctly.
-This saves one CNOT at every step of the recursion, which results in a total CNOT count of
-$\tfrac{21}{48}4^n-\tfrac32 2^n+2$ for decomposing an $n$-qubit unitary.
+Block-ZXZ merges two CX gates into the central multiplexor, one from each outer
+multiplexor~\cite[Sec.~5.2]{zxz}. We show that a third can be merged, a second one from the
+left-side multiplexor (Sec.~\ref{sec:fold}), when this is possible (Sec.~\ref{sec:cond}), how the free gate $u$ makes it
+possible (Sec.~\ref{sec:exist}), and what it saves (Sec.~\ref{sec:count}).
 
-\subsection{Merging a second CNOT into the central multiplexor}\label{sec:fold}
+\subsection{Merging an additional CX into the central multiplexor}\label{sec:fold}
 
-After the block-ZXZ decomposition, we first demultiplex only the input-side factor $I\oplus C$.
-Applying~\eqref{eq:demux} with $U_1=I$ and $U_2=C$ gives
+After the Block-ZXZ decomposition, we first demultiplex only the left-side factor $I\oplus C$. By~\eqref{eq:demux},
+$I\oplus C=(I\otimes V_c)\,\Delta(\theta)\,(I\otimes W_c)$ with
 \begin{equation}\label{eq:democ}
-\begin{pmatrix}I&0\\0&C\end{pmatrix}
-=\begin{pmatrix}V_c&0\\0&V_c\end{pmatrix}\Delta(\theta)
-\begin{pmatrix}W_c&0\\0&W_c\end{pmatrix},\qquad
-C=V_c\operatorname{diag}\!\big(e^{i\theta_1},\dots,e^{i\theta_D}\big)V_c^\dagger ,
+C=V_c\operatorname{diag}\big(e^{i\theta_1},\dots,e^{i\theta_D}\big)V_c^\dagger ,
 \end{equation}
-so the angles $\theta_j$ of the multiplexed rotation are the eigenphases $\mu_1,\dots,\mu_D$ of
-$C$, taken modulo $2\pi$. The multiplexor $\Delta(\theta)$ is then decomposed in Gray-code
-form~\cite{mottonen}: $D$ rotations $R_z(\varphi_k)$ on $t$, each followed by a CNOT onto $t$.
-The rotation angles are the Walsh--Hadamard transform of the $\theta_j$,
-\begin{equation}\label{eq:walsh}
-\varphi_k=\frac1D\sum_{j}(-1)^{\,b_{j}\cdot g_k}\,\theta_j ,
-\end{equation}
-where $b_j$ is the binary code of $j$, $g_k$ is the $k$-th Gray code word and the dot is the
-bitwise inner product. The last CNOT is controlled by the most significant control qubit
-$q_{n-2}$, the one before it by $q_0$, and the rotation between them has the angle
+so the angles $\theta_j$ are the eigenphases $\mu_1,\dots,\mu_D$ of $C$, taken modulo $2\pi$.
+In Gray-code form~\cite{mottonen}, $\Delta(\theta)$ is a sequence of $D$ rotations $R_z(\varphi_k)$
+on $t$, each followed by a CX onto $t$, and the angles $\varphi_k$ are the Walsh--Hadamard
+coefficients of the $\theta_j$. The circuit ends with $\CX(q_0,t)$, $R_z(\varphi)$,
+$\CX(q_{n-2},t)$, where
 \begin{equation}\label{eq:phi}
-\varphi=\frac1D\sum_{j}(-1)^{j_{n-2}}\,\theta_j ,
+\varphi=\frac1D\sum_{j}(-1)^{j_{n-2}}\,\theta_j
 \end{equation}
-the Walsh coefficient of the highest control bit $j_{n-2}$ (Fig.~\ref{fig:fold}a).
+is the coefficient of the highest control bit $j_{n-2}$ (Fig.~\ref{fig:fold}a).
 
-Block-ZXZ moves the Hadamard of the central factor to the other side of the last CNOT, which
-turns it into a CZ gate, $(H\otimes I)\,\CX(q_{n-2},t)=\CZ(q_{n-2},t)\,(H\otimes I)$. The rotation
-$R_z(\varphi)$ blocks the CNOT before it. If $\varphi=0$, however, the last two CNOTs are adjacent
-and \emph{both} can be moved through the Hadamard (Fig.~\ref{fig:fold}b):
-\begin{equation}\label{eq:twocz}
-(H\otimes I)\,\CX(q_{n-2},t)\,\CX(q_0,t)=\CZ(q_{n-2},t)\,\CZ(q_0,t)\,(H\otimes I)
-=\begin{pmatrix}I&0\\0&Z_{q_0}Z_{q_{n-2}}\end{pmatrix}(H\otimes I).
-\end{equation}
-The two CZ gates form a block-diagonal matrix. They can be merged into the central factor
-together with the $(n-1)$-qubit gates $V_c$ and $W_a$, as in block-ZXZ~\cite{zxz}. Including the
-single CZ that block-ZXZ already takes from the output-side multiplexor, the new central gate is
+Block-ZXZ folds the last CX through the Hadamard of the central factor, as
+$\CZ(q_{n-2},t)$ (Sec.~I.B), but $R_z(\varphi)$ keeps $\CX(q_0,t)$ from following. If $\varphi=0$,
+the two CX gates are adjacent and both fold, as the block-diagonal
+$\CZ(q_0,t)\CZ(q_{n-2},t)=I\oplus Z_{q_0}Z_{q_{n-2}}$ (Fig.~\ref{fig:fold}b). Together with $V_c$, the right-side $W_a$ and the CZ that Block-ZXZ already
+merges from the right-side multiplexor, the central factor to be demultiplexed becomes
 \begin{equation}\label{eq:btilde}
-\begin{aligned}
-\tilde B&=\begin{pmatrix}W_aV_c&0\\0&Z_{q_{n-2}}W_aBV_cZ_{q_0}Z_{q_{n-2}}\end{pmatrix}\\
-&=\begin{pmatrix}I&0\\0&Z_{q_{n-2}}\end{pmatrix}
-\begin{pmatrix}W_a&0\\0&W_a\end{pmatrix}
-\begin{pmatrix}I&0\\0&B\end{pmatrix}
-\begin{pmatrix}V_c&0\\0&V_c\end{pmatrix}
-\begin{pmatrix}I&0\\0&Z_{q_0}Z_{q_{n-2}}\end{pmatrix},
-\end{aligned}
+\tilde B=W_aV_c\ \oplus\ Z_{q_{n-2}}\,W_aBV_c\,Z_{q_0}Z_{q_{n-2}} .
 \end{equation}
-and it is demultiplexed as a regular multiplexor using~\eqref{eq:demux}. Its cost does not
-change, while the input-side multiplexor now needs $D-2$ CNOTs instead of $D-1$.
+The only change from Block-ZXZ is the extra $Z_{q_0}$, the third merged CX. The central
+multiplexor keeps its cost, and the left-side multiplexor drops from $D-1$ to $D-2$ CX gates.
 
 \begin{figure}[t]
 \centering
-\textbf{(a) block-ZXZ}\\[2pt]
-\begin{quantikz}[column sep=0.18cm, row sep={0.65cm,between origins}]
-\lstick{$t=q_2$} & \gate{R_z(\varphi_0)} & \targ{} & \gate{R_z(\varphi_1)} & \targ{} & \gate{R_z(\varphi_2)} & \targ{} & \gate{R_z(\varphi)} & \targ{}\gategroup[3,steps=2,style={dashed,rounded corners,fill=blue!10,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=-0.1cm}]{{\footnotesize folds to $\CZ$}} & \gate{H} & \\
-\lstick{$q_1$} & & & & \ctrl{-1} & & & & \ctrl{-1} & & \\
-\lstick{$q_0$} & & \ctrl{-2} & & & & \ctrl{-2} & & & &
-\end{quantikz}\\[8pt]
-\textbf{(b) this work: $u=R_z(\alpha)R_y(\beta^\ast)$ and $S$ on $j_1=0$, so $\varphi=0$}\\[2pt]
-\begin{quantikz}[column sep=0.18cm, row sep={0.65cm,between origins}]
-\lstick{$t=q_2$} & \gate{R_z(\varphi_0)} & \targ{} & \gate{R_z(\varphi_1)} & \targ{} & \gate{R_z(\varphi_2)} & \targ{}\gategroup[3,steps=3,style={dashed,rounded corners,fill=cnew!10,draw=cnew,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=-0.1cm}]{{\footnotesize\color{cnew} both fold}} & \targ{} & \gate{H} & \midstick[3,brackets=none]{=} & \gate{H} & \ctrl{2} & \ctrl{1} & \\
-\lstick{$q_1$} & & & & \ctrl{-1} & & & \ctrl{-1} & & & & & \control{} & \\
-\lstick{$q_0$} & & \ctrl{-2} & & & & \ctrl{-2} & & & & & \control{} & &
+\begin{tabular}{@{}l@{}}
+\textbf{(a) Block-ZXZ: one CX merged from the left}\\[2pt]
+\begin{quantikz}[column sep=0.12cm, row sep={0.65cm,between origins}]
+\lstick{$t=q_2$} & \gate{R_z(\varphi_0)} & \targ{} & \gate{R_z(\varphi_1)} & \targ{} & \gate{R_z(\varphi_2)} & \targ{}\gategroup[3,steps=4,style={dashed,rounded corners,fill=black!8,draw=black!50,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=-0.1cm}]{{\footnotesize\color{black!60} 1 fold into $\tilde B$}} & \gate{R_z(\varphi)} & \gate{H} & \ctrl{1} & \gate{H} & \gate{R_z} & \targ{} & \gate{R_z} & \targ{} & \gate{R_z} & \targ{} & \gate{R_z} & \\
+\lstick{$q_1$} & \gate[2]{W_c} & & & \ctrl{-1} & & & & & \gate[2]{\tilde B} & & & & & \ctrl{-1} & & & \gate[2]{V_a} & \\
+\lstick{$q_0$} & & \ctrl{-2} & & & & \ctrl{-2} & & & & & & \ctrl{-2} & & & & \ctrl{-2} & &
+\end{quantikz}\\[40pt]
+\textbf{(b) this work: two CX gates merged from the left}\\[2pt]
+\begin{quantikz}[column sep=0.12cm, row sep={0.65cm,between origins}]
+\lstick{$t=q_2$} & \gate[style=newgate]{u^\dagger} & \gate{R_z(\varphi_0)} & \targ{} & \gate{R_z(\varphi_1)} & \targ{} & \gate{R_z(\varphi_2)} & \gate{H}\gategroup[3,steps=2,style={dashed,rounded corners,fill=cnew!10,draw=cnew,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=-0.1cm}]{{\footnotesize\color{cnew} 2 folds into $\tilde B$}} & \ctrl{1} & \gate{H} & \gate{R_z} & \targ{} & \gate{R_z} & \targ{} & \gate{R_z} & \targ{} & \gate{R_z} & \\
+\lstick{$q_1$} & \gate[2]{W_c} & & & & \ctrl{-1} & & & \gate[2]{\tilde B} & & & & & \ctrl{-1} & & & \gate[2]{V_a} & \\
+\lstick{$q_0$} & & & \ctrl{-2} & & & & & & & & \ctrl{-2} & & & & \ctrl{-2} & &
 \end{quantikz}
-\caption{The input-side multiplexor $\Delta_c=\Delta(\theta)$ in Gray-code form, followed by the
-Hadamard of the central factor ($n=3$, so $D=4$, $t=q_2$ and $j_{n-2}=j_1$). The angles
-$\varphi_0,\varphi_1,\varphi_2,\varphi_3=\varphi$ are the Walsh coefficients~\eqref{eq:walsh} of
-the $\theta_j$. (a)~Block-ZXZ: $R_z(\varphi)$ separates the last two CNOTs, so only the last one
-moves through $H$, as $\CZ(q_1,q_2)$. (b)~This work: the free gate $u=R_z(\alpha)R_y(\beta^\ast)$
-gives $C$ a balanced split $S$~\eqref{eq:split}, and assigning the eigenphases in $S$ to $j_1=0$
-makes $\varphi=0$ by~\eqref{eq:phiS}. The last two CNOTs become adjacent, both move through $H$,
-and $\CZ(q_0,q_2)\CZ(q_1,q_2)=I\oplus Z_{q_0}Z_{q_1}$ is merged into the central gate $\tilde B$
-of~\eqref{eq:btilde}. $\Delta_c$ costs $D-2=2$ CNOTs instead of $3$.}
+\end{tabular}
+\caption{A full node after merging ($n=3$), cf.~\cite[Sec.~5.2]{zxz}. In both panels the first CX of
+the right-side multiplexor is merged into $\tilde B$. (a)~Block-ZXZ: $R_z(\varphi)$ separates the
+last two CX gates of the left-side multiplexor, so only the last one is merged (grey). (b)~This work:
+the free gate $u^\dagger$ makes $\varphi=0$ (Sec.~\ref{sec:exist}), so $\CX(q_0,t)$ is merged as
+well, as the extra $Z_{q_0}$ in~\eqref{eq:btilde} (blue). The left-side multiplexor uses $2$ CX gates
+instead of $3$.}
 \label{fig:fold}
 \end{figure}
 
-\subsection{When is the second merge possible?}
+\subsection{When is the additional merge possible?}\label{sec:cond}
 
-The angles $\theta_j$ cannot be chosen freely: by~\eqref{eq:democ}, $\theta_j\equiv\mu_j\pmod
-{2\pi}$. Two choices are left. The first is which eigenvalue is assigned to which basis state
-$j$, i.e.\ the order of the columns of $V_c$. The second is the branch of each $\theta_j$:
-replacing $\theta_j$ by $\theta_j+2\pi$ flips the sign of one eigenvector, which is absorbed by
-$V_c$ and $W_c$. The sum~\eqref{eq:phi} only sees which eigenvalues are placed on the states with
-$j_{n-2}=0$, not their order within each half. If a set $S$ of $D/2$ eigenvalues is placed on
-$j_{n-2}=0$, then
+The angles in~\eqref{eq:phi} are fixed by $C$ up to two choices: which eigenvalue is placed on
+which basis state $j$ (the column order of $V_c$), and the branch of each $\theta_j$ (a shift by
+$2\pi$ flips the sign of one eigenvector, which $V_c$ and $W_c$ absorb). Only the split matters:
+if the eigenvalues in a set $S$, $|S|=D/2$, are placed on $j_{n-2}=0$, then
 \begin{equation}\label{eq:phiS}
 \varphi=\frac1D\Big(\sum_{k\in S}\mu_k-\sum_{k\notin S}\mu_k\Big)+\frac{2\pi\ell}{D},\qquad
 \ell\in\mathbb Z,
 \end{equation}
-where $\ell$ is set by the branches. So $\varphi$ can be made zero exactly when the eigenphases of
-$C$ admit a \emph{balanced split}:
+with $\ell$ set by the branches. So $\varphi$ can be made zero exactly when $C$ has a
+\emph{balanced split}:
 \begin{equation}\label{eq:split}
-\sum_{k\in S}\mu_k-\sum_{k\notin S}\mu_k\in 2\pi\mathbb Z,\qquad |S|=D/2 .
+\sum_{k\in S}\mu_k-\sum_{k\notin S}\mu_k\in 2\pi\mathbb Z,\qquad |S|=D/2 ,
 \end{equation}
-Equivalently, the product of the eigenvalues in $S$ equals the product of the eigenvalues
-outside $S$. For a generic $C$ no balanced split exists. The condition is a single real equation,
-however, so one free real parameter in the node should be enough to meet it.
+i.e.\ the eigenvalues in $S$ and outside $S$ have equal products. A generic $C$ has no balanced
+split, but~\eqref{eq:split} is a single real equation, so one free real parameter should be
+enough to meet it.
 
 \subsection{Choosing the top-qubit gate}\label{sec:exist}
 
-A single-qubit gate $u$ on $t$ costs no CNOTs. We decompose $U(u\otimes I)$ instead of $U$ and
-place $u^\dagger$ on $t$ at the start of the circuit, where it merges with the neighbouring
-single-qubit gates. The gate $u$ changes the top-row blocks of the matrix to be decomposed, and
-with them $C$. A phase gate $R_z(\alpha)$ is not enough on its own: it maps
-$(X,Y)\mapsto(e^{-i\alpha/2}X,\,e^{i\alpha/2}Y)$, which multiplies $C$ by $e^{i\alpha}$ and leaves
-the differences in~\eqref{eq:split} unchanged. An $R_y$ rotation mixes the two blocks, so we use
-$u(\beta)=R_z(\alpha)R_y(\beta)$ and follow $C$ along $\beta\in[0,\pi]$. Up to the phases
-$e^{\mp i\alpha/2}$, the top-row blocks become
+The free parameter is a single-qubit gate $u$ on $t$. We decompose $U(u\otimes I)$ instead of $U$
+and place $u^\dagger$ at the start of the node, where it merges with the neighbouring single-qubit gates at no
+CX cost. The gate $u$ changes the top-row blocks, and with them $C$. The strategy is to move
+$C$ along a path whose endpoints are inverse to each other, and to show that a function
+detecting balanced splits changes sign between them.
+
+A phase gate $R_z(\alpha)$ alone does not help: it maps $(X,Y)\mapsto(e^{-i\alpha/2}X,
+e^{i\alpha/2}Y)$ and multiplies $C$ by $e^{i\alpha}$, which leaves~\eqref{eq:split} unchanged. An
+$R_y$ rotation mixes the blocks, so we take $u(\beta)=R_z(\alpha)R_y(\beta)$, $\beta\in[0,\pi]$.
+Up to the phases $e^{\mp i\alpha/2}$,
 \begin{equation}\label{eq:path}
 \begin{pmatrix}X(\beta)&Y(\beta)\end{pmatrix}
 =\begin{pmatrix}X&Y\end{pmatrix}
 \begin{pmatrix}c\,I&-s\,I\\ s\,I&c\,I\end{pmatrix},\qquad c=\cos\tfrac\beta2,\ s=\sin\tfrac\beta2 ,
 \end{equation}
-and $C(\beta)=-i\,U_{X(\beta)}^\dagger U_{Y(\beta)}$ is computed from their polar decompositions as
-in~\eqref{eq:zxz}.
+and $C(\beta)=-i\,U_{X(\beta)}^\dagger U_{Y(\beta)}$ as in~\eqref{eq:zxz}.
 
-\paragraph{The endpoints.} At $\beta=\pi$ the blocks are $(X(\pi),Y(\pi))=(Y,-X)$, so the polar
-factors are $U_{X(\pi)}=U_Y$ and $U_{Y(\pi)}=-U_X$. Therefore
+\paragraph{The endpoints.} At $\beta=\pi$, $(X(\pi),Y(\pi))=(Y,-X)$, so $U_{X(\pi)}=U_Y$,
+$U_{Y(\pi)}=-U_X$ and
 \begin{equation}\label{eq:inv}
-C(\pi)=-i\,U_Y^\dagger(-U_X)=i\,U_Y^\dagger U_X=\big(-i\,U_X^\dagger U_Y\big)^\dagger=C(0)^{-1}.
+C(\pi)=i\,U_Y^\dagger U_X=\big(-i\,U_X^\dagger U_Y\big)^\dagger=C(0)^{-1}.
 \end{equation}
-Following the path from $\beta=0$ to $\beta=\pi$ inverts $C$, so every eigenphase changes sign.
+Along the path every eigenphase of $C$ changes sign.
 
-\paragraph{A test function.} To detect a balanced split, first remove the overall phase of $C$,
-which does not affect~\eqref{eq:split}. Let $r(\beta)$ be a $D$-th root of $\det C(\beta)$ that varies continuously with
-$\beta$, write the eigenvalues of $C(\beta)/r(\beta)$ as $e^{i\nu_k(\beta)}$, and set
-$\psi_S=\sum_{k\in S}\nu_k$ for each balanced split. Since $\det(C/r)=1$, $\psi_{S^c}\equiv-\psi_S
-\pmod{2\pi}$, and
-\eqref{eq:split} holds for $S$ exactly when $\sin\psi_S=0$. The product over the
-$N/2=\tfrac12\binom{D}{D/2}$ pairs $\{S,S^c\}$,
+\paragraph{A test function.} Let $r(\beta)$ be a continuous $D$-th root of $\det C(\beta)$, write
+the eigenvalues of $C/r$ as $e^{i\nu_k}$, and set $\psi_S=\sum_{k\in S}\nu_k$. Dividing by $r$
+removes the overall phase, which does not affect~\eqref{eq:split}, and since $\det(C/r)=1$,
+$\psi_{S^c}\equiv-\psi_S$. So $S$ is a balanced split exactly when $\sin\psi_S=0$, and
 \begin{equation}\label{eq:P}
 P(\beta)=\prod_{\{S,S^c\}}2\sin\psi_S(\beta),
 \end{equation}
-vanishes exactly when $C(\beta)$ has a balanced split. Written as a Pfaffian,
-$P=\Pf(R-R^{\mathsf T})$, where $R$ is the real orthogonal matrix by which $C/r$ acts on the
-$(D/2)$-th exterior power (its eigenvalues are the $e^{\pm i\psi_S}$). This form shows that $P$
-has a well-defined sign and is a continuous function of $\beta$.
+a product over the $N/2=\tfrac12\binom{D}{D/2}$ pairs $\{S,S^c\}$, vanishes exactly when $C(\beta)$
+has a balanced split. As a Pfaffian, $P=\Pf(R-R^{\mathsf T})$ with $R$ the real orthogonal matrix
+by which $C/r$ acts on the $(D/2)$-th exterior power, so $P$ is continuous with a well-defined
+sign.
 
-\paragraph{The sign change.} By~\eqref{eq:inv}, $C(\pi)/r(\pi)$ is the inverse of $C(0)/r(0)$, up
-to how far the root $r$ has turned along the way. Write $\tau_1,\dots,\tau_D$ for the eigenvalues
-of $e^{i\alpha}X^{-1}Y$, assumed non-real. Along the path,
+\paragraph{The sign change.} Let $\tau_1,\dots,\tau_D$ be the eigenvalues of $e^{i\alpha}X^{-1}Y$,
+assumed non-real. Then
 \begin{equation}\label{eq:dets}
 \det X(\beta)=\det X\prod_k\big(c+s\,\tau_k\big),\qquad
-\det Y(\beta)=\det Y\prod_k\big(c-s/\tau_k\big),
+\det Y(\beta)=\det Y\prod_k\big(c-s/\tau_k\big)
 \end{equation}
-neither of which vanishes, so $C(\beta)$ is continuous. Counting how far the phase of each factor
-turns gives $r(\pi)=\overline{r(0)}\,e^{2\pi i m/D}$ with
+never vanish, so $C(\beta)$ is continuous, and following the phase of each factor gives
+$r(\pi)=\overline{r(0)}\,e^{2\pi i m/D}$ with
 \begin{equation}\label{eq:m}
 m=\#\{k:\operatorname{Im}\tau_k>0\}-\tfrac D2 .
 \end{equation}
-Hence $\nu_k(\pi)=-\nu_k(0)-2\pi m/D$ after relabelling, and every $\psi_S$ becomes
-$-\psi_S-\pi m$. Each factor of~\eqref{eq:P} is therefore multiplied by $(-1)^{m+1}$. The number
-of factors, $N/2=\binom{D-1}{D/2-1}$, is odd because $D-1$ is all ones in binary, so
+With~\eqref{eq:inv}, $\nu_k(\pi)=-\nu_k(0)-2\pi m/D$ up to relabelling, so every $\psi_S$ becomes
+$-\psi_S-\pi m$ and every factor of~\eqref{eq:P} is multiplied by $(-1)^{m+1}$. There are
+$N/2=\binom{D-1}{D/2-1}$ factors, an odd number because $D-1$ is all ones in binary, so
 \begin{equation}\label{eq:sign}
 P(\pi)=(-1)^{m+1}P(0).
 \end{equation}
-The phase $\alpha$ is used to make $m$ even. As $\alpha$ goes around the circle, each $\tau_k$
-does too, and the count in~\eqref{eq:m} changes by one each time a $\tau_k$ crosses the real axis,
-so it is even on some interval of $\alpha$. With such an $\alpha$, $P(\pi)=-P(0)$, and $P$ has a
-zero $\beta^\ast\in[0,\pi]$. At $u=R_z(\alpha)R_y(\beta^\ast)$ the factor $C$ has a balanced split,
-the split $S$ is placed on $j_{n-2}=0$, and the input-side multiplexor gives up two CNOTs.
+Finally, $\alpha$ rotates every $\tau_k$ by the same angle, and the count in~\eqref{eq:m} changes
+by one whenever a $\tau_k$ crosses the real axis, so some $\alpha$ makes $m$ even. Then
+$P(\pi)=-P(0)$ and $P$ has a zero $\beta^\ast\in[0,\pi]$. With $u=R_z(\alpha)R_y(\beta^\ast)$, $C$
+has a balanced split $S$; placing $S$ on $j_{n-2}=0$ gives $\varphi=0$, and the left-side
+multiplexor contributes a second CX to the central factor.
 
-The argument needs $X$ and $Y$ to be invertible, which fails only on a set of measure zero. The
-circuits produced all share one CNOT skeleton. The set of unitaries this skeleton reaches with
-arbitrary single-qubit gates is closed and contains all generic $U$, so it contains every $U$.
+The argument assumes that $X$ and $Y$ are invertible, which fails only on a set of measure zero.
+All circuits share one CX skeleton, and the set of unitaries it reaches with arbitrary
+single-qubit gates is closed and contains all generic $U$, so it contains every $U$. In practice,
+$\alpha$ is taken from a grid, and $\beta^\ast$ is found by scanning $[0,\pi]$ for a sign change of
+$P$ and bisecting, with the eigenphases of $C(\beta)$ and the root $r(\beta)$ tracked continuously.
 
-In practice, $\alpha$ is taken from a grid of values, and $\beta^\ast$ is found by scanning
-$[0,\pi]$ for a sign change of $P$ and refining it by bisection, while the eigenphases of $C(\beta)$
-and the root $r(\beta)$ are tracked continuously. The rest of the node is decomposed as in
-block-ZXZ.
+\subsection{Gate count}\label{sec:count}
 
-\subsection{Gate count}
-
-For a generic three-qubit unitary, the decomposition results in four generic two-qubit gates.
-Three of these need two CNOTs, since each is decomposed up to a diagonal that is merged into the
-next, and the last one needs three. The input-side multiplexor now needs two CNOTs, the central
-multiplexor four and the output-side multiplexor three. The total CNOT count for a three-qubit
-unitary is therefore $3\cdot2+3+2+4+3=18$ CNOT gates, one fewer than block-ZXZ.
-
-For bigger operators we start from the recursive relation. An $n$-qubit unitary requires $c_n$
-CNOTs, which are at most
+An $n$-qubit unitary requires at most $c_n$ CX gates, with
 \begin{equation}\label{eq:rec}
-c_n\le 4\cdot c_{n-1}-3+3\cdot2^{n-1}-3=4\cdot c_{n-1}+3\cdot2^{n-1}-6 .
+c_n= 4c_{n-1}+3\cdot2^{n-1}-6 ,\qquad c_2=3 .
 \end{equation}
-At each level of the recursion, the count is the sum of the CNOTs for the four smaller unitaries
-($c_{n-1}$ each) and for the three multiplexors ($2^{n-1}$ each). Three of the smaller unitaries
-need one CNOT less because of the diagonal migration, the output-side multiplexor needs one CNOT
-less because of the block-ZXZ merge, and the input-side multiplexor needs two CNOTs less because
-of Sec.~\ref{sec:fold}. Unrolling~\eqref{eq:rec} down to $c_2\le3$,
+The four children cost $c_{n-1}$ each and the three multiplexors $2^{n-1}$ each, less six CX gates:
+three children are decomposed up to a diagonal that is merged into the next (one each), the
+right-side multiplexor folds one CX, and the left-side multiplexor folds two. Unrolling,
 \begin{align*}
-c_n&\le 4^{n-2}c_2+3\cdot2^{n-1}\big(1+2^{-1}\cdot4+\dots+2^{-(n-3)}\cdot4^{n-3}\big)
--6\big(1+4+\dots+4^{n-3}\big)\\
-&= 4^{n-2}c_2+3\cdot2^{n-1}\big(2^{n-2}-1\big)-2\big(4^{n-2}-1\big)\\
-&\le\Big(\frac{3}{16}+\frac38-\frac{2}{16}\Big)4^n-\frac32\,2^n+2
-=\frac{21}{48}\,4^n-\frac32\,2^n+2 .
+c_n&= 4^{n-2}c_2+\sum_{k=0}^{n-3}4^k\big(3\cdot2^{n-1-k}-6\big)
+= 4^{n-2}c_2+3\cdot2^{n-1}\big(2^{n-2}-1\big)-2\big(4^{n-2}-1\big)\\
+&=\frac{21}{48}\,4^n-\frac32\,2^n+2 .
 \end{align*}
-Compared with block-ZXZ, one CNOT is saved at each of the $1+4+\dots+4^{n-3}=(4^{n-2}-1)/3$
-recursion nodes.
+Block-ZXZ has $-5$ in place of $-6$ in~\eqref{eq:rec}, so one CX is saved at each of the
+$(4^{n-2}-1)/3$ recursion nodes.
 
 %==========================================================================================
 \section{Results and Discussion}
 
-\subsection{Implementation}
-
-
-
-We implemented the construction of Sec.~II in numpy. The two-qubit leaves use the standard
-3-CNOT and 2-CNOT-up-to-diagonal constructions. The implementation reproduces the counts of
-Table~\ref{tab:counts}: $18$, $90$ and $402$ CNOTs for Haar-random unitaries at $n=3,4,5$, with
-reconstruction errors $2\cdot10^{-15}$, $6\cdot10^{-15}$ and $2\cdot10^{-14}$. The sign relation
-$P(\pi)=-P(0)$ of~\eqref{eq:sign} held on every sampled target once $\alpha$ was chosen,
+We implemented the construction of Sec.~II in numpy, with the standard 3-CX and
+2-CX-up-to-diagonal two-qubit leaves. It reproduces the counts of Table~\ref{tab:counts} for
+Haar-random unitaries at $n=3,4,5$, with reconstruction errors below $2\cdot10^{-14}$. The sign
+relation $P(\pi)=-P(0)$ of~\eqref{eq:sign} held on every sampled target once $\alpha$ was chosen,
 and the root search succeeded on $300/300$ random three-qubit targets.
 
-\subsection{Comparison with block-ZXZ}
+The construction improves Block-ZXZ in the setting it was designed for: exact synthesis of every
+unitary with a guaranteed count. The leading coefficient drops from $\tfrac{22}{48}$ to
+$\tfrac{21}{48}$, about $4.5\%$ fewer CX gates asymptotically. The mechanism is the fold Block-ZXZ
+already uses; the new ingredient is a free gate that provably makes a third fold possible. The
+improvement is modest in absolute terms. The gap to the lower bound ($\tfrac{12}{48}$) remains,
+and numerical compilers reach fewer CX gates for small $n$~\cite{brickwall,squander}, though
+without closed forms or guarantees.
 
-The construction improves block-ZXZ in the setting it was designed for: exact synthesis of
-every unitary with a guaranteed count. The leading coefficient drops from $\tfrac{22}{48}$ to
-$\tfrac{21}{48}$, about $4.5\%$ fewer CNOTs asymptotically. The count is lower at every
-$n\ge3$, and $18$ CNOTs for a general three-qubit unitary is below the $19$ of the best previous
-analytic method. The mechanism is the one block-ZXZ already uses, a CNOT folded into the central
-factor as a CZ. The new ingredient is spending the free top-qubit single-qubit gate to make a
-second fold possible, with an argument that it always exists rather than a heuristic. The improvement is
-modest in absolute terms. The gap to the lower bound ($\tfrac{12}{48}$) remains, and numerical
-compilers reach fewer CNOTs for small $n$~\cite{brickwall,squander}, though without closed
-forms or guarantees.
-
-\subsection{Limitations}
-
-The construction is not closed form: each node needs a one-dimensional root search. The
-sign change~\eqref{eq:sign} guarantees that the search succeeds, and the CNOT count does not depend on how
-the root is found. As implemented, however, evaluating the sign of $P$ ranges over all
+The construction is not closed form: each node needs a one-dimensional root search. The sign
+change~\eqref{eq:sign} guarantees that the search succeeds, and the CX count does not depend
+on how the root is found. As implemented, however, evaluating the sign of $P$ ranges over all
 $\binom{D}{D/2}/2$ balanced splits. That is cheap for $n\le5$ but grows quickly with $n$. An
-efficient evaluation of the sign of $P$, or a direct way to find a split that crosses zero,
-would remove this classical overhead and is left open.
-
-\subsection{Outlook: a second free gate}
-
-Each node has a second outer multiplexor, $\Delta_a$, on the output side. It has the same fold
-condition, for the eigenphases of $A_1A_2^\dagger$ in place of $C$, and a second free gate
-$v=R_y(\gamma)R_z(\alpha')$ on $t$ at the output, which also costs no CNOTs. We attempted to extend
-Sec.~\ref{sec:exist} to the pair $(u,v)$, i.e.\ to the node $U'=(v\otimes I)\,U\,(u\otimes I)$.
-The attempt clarifies the structure but does not yet give a proof.
-
-Write the cosine--sine decomposition as $U'=(L_1\oplus L_2)\begin{psmallmatrix}\Gamma&-\Sigma\\
-\Sigma&\Gamma\end{psmallmatrix}(R_1\oplus R_2)$. Inserting it into~\eqref{eq:zxz} gives, up to
-similarity,
-\begin{equation}\label{eq:csd}
-C\sim i\,R_2R_1^\dagger,\qquad A_1A_2^\dagger\sim i\,L_1L_2^\dagger ,
-\end{equation}
-independent of the cosines $\Gamma$ and sines $\Sigma$. The two fold conditions are therefore
-balanced splits of the right and the left halves of the cosine--sine decomposition. The two gates
-act on them in a dual way:
-\begin{equation}\label{eq:dual}
-\beta\mapsto\beta+\pi:\ \ C\mapsto C^{-1},\ \ A_1A_2^\dagger\mapsto-A_1A_2^\dagger,\qquad
-\gamma\mapsto\gamma+\pi:\ \ C\mapsto-C,\ \ A_1A_2^\dagger\mapsto\big(A_1A_2^\dagger\big)^{-1}.
-\end{equation}
-A sign flip of the whole spectrum preserves a balanced split, while an inversion flips the sign
-of the test function~\eqref{eq:P}, as in~\eqref{eq:sign}. So the test function of $C$ changes sign
-across the $\beta$ direction of the $(\beta,\gamma)$ torus and that of $A_1A_2^\dagger$ across the
-$\gamma$ direction. If both functions were continuous on the whole torus, these complementary twists
-would be expected to force their zero curves to cross, much as two functions that change sign
-across opposite pairs of edges of a square must vanish together. That would give both folds at
-once.
-
-The obstruction is the set of points where a top-row block of $U'$ is singular. There the polar
-factors jump, the phase of $\det C$ winds once around the point, and the test function changes
-sign on a small loop around it, so zero curves can end there. The condition on $A_1A_2^\dagger$ is
-singular where a left-column block of $U'$ is. Since $X$ and $Y$ have the same singular values as
-the bottom-row blocks $U'_{22}$ and $U'_{21}$, the singular points are the same for both
-conditions. For some sampled three-qubit targets, a choice of $(\alpha,\alpha')$ removes them
-all, but for others every choice we tried leaves between two and six. Numerically, gates meeting
-both conditions still exist for every sampled target and give exact $17$-CNOT three-qubit
-circuits. Controlling these singular points would save a second CNOT per node and lower the
-leading coefficient to $\tfrac{20}{48}$, i.e.\ $\tfrac{20}{48}4^n-\tfrac32 2^n+\tfrac73$ CNOTs.
+efficient evaluation of the sign of $P$, or a direct way to find a split that crosses zero, would
+remove this classical overhead and is left open.
 
 \begin{thebibliography}{9}
 \bibitem{smb} V.~V.~Shende, S.~S.~Bullock, I.~L.~Markov, \emph{Synthesis of quantum logic

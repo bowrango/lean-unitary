@@ -218,76 +218,93 @@ in $\beta$, and Sec.~\ref{sec:exist} shows that varying $\beta$ always produces 
 
 \subsection{Choosing the pivot gate}\label{sec:exist}
 
-Block-ZXZ computes $C$ from the top row of the matrix it factors. Write
-$U(g\otimes I)=\begin{psmallmatrix}X_g&Y_g\\ \ast&\ast\end{psmallmatrix}$ in $D\times D$ blocks,
-with polar decompositions $X_g=S_{X_g}U_{X_g}$ and $Y_g=S_{Y_g}U_{Y_g}$. Then
-\begin{equation}\label{eq:Cdef}
-C(g)=-i\,U_{X_g}^\dagger U_{Y_g} ,
-\end{equation}
-and $g$ changes $C$ by mixing the top-row blocks $X,Y$ of $U=\begin{psmallmatrix}X&Y\\ \ast&\ast
-\end{psmallmatrix}$. The strategy is to move
-$C$ along a path whose endpoints are inverse to each other, and to show that a function
-detecting balanced splits changes sign between them.
+A single split suffices: take the middle half of an ordered eigenphase list. We choose the
+pivot path so that this list reverses and changes sign between its endpoints. The middle
+half remains the middle half, so its phase imbalance changes sign and must pass through zero.
+Here $n\ge3$, so $D=2^{n-1}$ is divisible by four. We first consider generic $U$; exceptional
+cases follow by a limit.
 
-A phase gate $R_z(\alpha)$ alone does not help: it maps $(X,Y)\mapsto(e^{-i\alpha/2}X,
-e^{i\alpha/2}Y)$ and multiplies $C$ by $e^{i\alpha}$, which leaves~\eqref{eq:split} unchanged. An
-$R_y$ rotation mixes the blocks, so we fix $\alpha$ and vary $\beta\in[0,\pi]$ in
-$g=R_z(\alpha)R_y(\beta)$, writing $X(\beta)=X_g$, $Y(\beta)=Y_g$ and $C(\beta)=C(g)$. Up to the
-phases $e^{\mp i\alpha/2}$,
+Write the top-row blocks of $U$ as $(X,Y)$. For $g=R_z(\alpha)R_y(\beta)$, the top-row
+blocks of $U(g\otimes I)$ are
 \begin{equation}\label{eq:path}
-\begin{pmatrix}X(\beta)&Y(\beta)\end{pmatrix}
-=\begin{pmatrix}X&Y\end{pmatrix}
-\begin{pmatrix}c\,I&-s\,I\\ s\,I&c\,I\end{pmatrix},\qquad c=\cos\tfrac\beta2,\ s=\sin\tfrac\beta2 ,
+X_g=e^{-i\alpha/2}c\,X+e^{i\alpha/2}s\,Y,\qquad
+Y_g=-e^{-i\alpha/2}s\,X+e^{i\alpha/2}c\,Y ,
 \end{equation}
-and $C(\beta)=-i\,U_{X(\beta)}^\dagger U_{Y(\beta)}$ by~\eqref{eq:Cdef}.
-
-\paragraph{The endpoints.} At $\beta=\pi$, $(X(\pi),Y(\pi))=(Y,-X)$, so $U_{X(\pi)}=U_Y$,
-$U_{Y(\pi)}=-U_X$ and
-\begin{equation}\label{eq:inv}
-C(\pi)=i\,U_Y^\dagger U_X=\big(-i\,U_X^\dagger U_Y\big)^\dagger=C(0)^{-1}.
+where $c=\cos(\beta/2)$ and $s=\sin(\beta/2)$. Their polar decompositions
+$X_g=S_{X_g}U_{X_g}$ and $Y_g=S_{Y_g}U_{Y_g}$ give the Block-ZXZ factor
+\begin{equation}\label{eq:Cdef}
+C(g)=-i\,U_{X_g}^{\dagger}U_{Y_g}.
 \end{equation}
-Along the path every eigenphase of $C$ changes sign.
 
-\paragraph{A test function.} Let $r(\beta)$ be a continuous $D$-th root of $\det C(\beta)$, write
-the eigenvalues of $C/r$ as $e^{i\nu_k}$, and set $\psi_S=\sum_{k\in S}\nu_k$. Dividing by $r$
-removes the overall phase, which does not affect~\eqref{eq:split}, and since $\det(C/r)=1$,
-$\psi_{S^c}\equiv-\psi_S$. So $S$ is a balanced split exactly when $\sin\psi_S=0$, and
-\begin{equation}\label{eq:P}
-P(\beta)=\prod_{\{S,S^c\}}2\sin\psi_S(\beta),
-\end{equation}
-a product over the $N/2=\tfrac12\binom{D}{D/2}$ pairs $\{S,S^c\}$, vanishes exactly when $C(\beta)$
-has a balanced split. As a Pfaffian, $P=\Pf(R-R^{\mathsf T})$ with $R$ the real orthogonal matrix
-by which $C/r$ acts on the $(D/2)$-th exterior power, so $P$ is continuous with a well-defined
-sign.
+\paragraph{Choosing $\alpha$.} For generic $U$, $X$ and $Y$ are invertible. Let $\rho_k$
+be the eigenvalues of $X^{-1}Y$ and $\tau_k=e^{i\alpha}\rho_k$. Choose $\alpha$ so that
+exactly $D/2$ of the $\tau_k$ lie in each of the open upper and lower half-planes. Such a choice exists for generic $U$: rotating by $\pi$ changes the number
+in the upper half-plane from $N$ to $D-N$, and each distinct real-axis crossing changes this
+count by one. It must therefore attain $D/2$. The crossing angles are
+$\alpha=-\arg\rho_k\pmod\pi$; choose a point between crossings with the required count.
 
-\paragraph{The sign change.} Let $\tau_1,\dots,\tau_D$ be the eigenvalues of $e^{i\alpha}X^{-1}Y$,
-assumed non-real. Then
+Fix this $\alpha$ and vary $\beta$ from $0$ to $\pi$. Up to constant phase factors,
 \begin{equation}\label{eq:dets}
-\det X(\beta)=\det X\prod_k\big(c+s\,\tau_k\big),\qquad
-\det Y(\beta)=\det Y\prod_k\big(c-s/\tau_k\big)
+\det X_g\propto\det X\prod_k(c+s\tau_k),\qquad
+\det Y_g\propto\det Y\prod_k(c-s/\tau_k).
 \end{equation}
-never vanish, so $C(\beta)$ is continuous, and following the phase of each factor gives
-$r(\pi)=\overline{r(0)}\,e^{2\pi i m/D}$ with
-\begin{equation}\label{eq:m}
-m=\#\{k:\operatorname{Im}\tau_k>0\}-\tfrac D2 .
+Since no $\tau_k$ is real, these determinants never vanish and $C(\beta):=C(g)$ is continuous.
+At $\beta=\pi$, the blocks have swapped and the second has changed sign, so
+\begin{equation}\label{eq:inv}
+C(\pi)=C(0)^\dagger=C(0)^{-1}.
 \end{equation}
-With~\eqref{eq:inv}, $\nu_k(\pi)=-\nu_k(0)-2\pi m/D$ up to relabelling, so every $\psi_S$ becomes
-$-\psi_S-\pi m$ and every factor of~\eqref{eq:P} is multiplied by $(-1)^{m+1}$. There are
-$N/2=\binom{D-1}{D/2-1}$ factors, an odd number because $D-1$ is all ones in binary, so
-\begin{equation}\label{eq:sign}
-P(\pi)=(-1)^{m+1}P(0).
-\end{equation}
-Finally, $\alpha$ rotates every $\tau_k$ by the same angle, and the count in~\eqref{eq:m} changes
-by one whenever a $\tau_k$ crosses the real axis, so some $\alpha$ makes $m$ even. Then
-$P(\pi)=-P(0)$ and $P$ has a zero $\beta^\ast\in[0,\pi]$. With $g=R_z(\alpha)R_y(\beta^\ast)$, $C$
-has a balanced split $S$; placing $S$ on $j_{n-2}=0$ gives $\varphi=0$, and the left-side
-multiplexor contributes a second CX to the central factor.
+Thus the endpoint eigenphases are negatives of the starting ones, modulo $2\pi$.
 
-The argument assumes that $X$ and $Y$ are invertible, which fails only on a set of measure zero.
-All circuits share one CX skeleton, and the set of unitaries it reaches with arbitrary
-single-qubit gates is closed and contains all generic $U$, so it contains every $U$. In practice,
-$\alpha$ is taken from a grid, and $\beta^\ast$ is found by scanning $[0,\pi]$ for a sign change of
-$P$ and bisecting, with the eigenphases of $C(\beta)$ and the root $r(\beta)$ tracked continuously.
+\paragraph{Choosing the split.} To make this reversal precise, first fix the total phase
+$\sigma(\beta)$ of $\det C(\beta)$. Put $t_k=\arg\tau_k\in(-\pi,\pi)$ and use
+\begin{equation}\label{eq:m}
+\sigma(\beta)=\sum_k\big(t_k+\arg(c-s/\tau_k)-\arg(c+s\tau_k)\big).
+\end{equation}
+Each polar factor has the same determinant phase as its block, and $(-i)^D=1$, so
+$e^{i\sigma}=\det C$. The arguments in~\eqref{eq:m} are principal values: both factors
+start at $1$ and stay in the half-plane containing $\tau_k$, making $\sigma$ continuous.
+Their arguments end at $\operatorname{sgn}(t_k)\pi-t_k$ and $t_k$, respectively. With equal
+numbers of positive and negative $t_k$, this gives $\sigma(\pi)=-\sigma(0)$.
+
+Now choose real eigenphases $\mu_j$, allowing $2\pi$ shifts, so that
+\[
+\mu_0(\beta)\le\cdots\le\mu_{D-1}(\beta)\le\mu_0(\beta)+2\pi,
+\qquad \sum_k\mu_k(\beta)=\sigma(\beta).
+\]
+Start with sorted principal phases. Move the smallest phase to the end after adding $2\pi$,
+or the largest to the front after subtracting $2\pi$, until the sum is $\sigma$. The total-phase
+condition fixes the cyclic order. The resulting phases vary continuously: a phase crossing the argument
+cut is compensated by the corresponding $2\pi$ shift. Equations~\eqref{eq:inv}
+and~\eqref{eq:m} then imply
+\[
+\mu_j(\pi)=-\mu_{D-1-j}(0).
+\]
+Choose the fixed middle half $S=\{D/4,\dots,3D/4-1\}$ and define its imbalance with the
+outer quarters by
+\begin{equation}\label{eq:P}
+P(\beta)=\frac12\Big(\sum_{j\in S}\mu_j(\beta)-\sum_{j\notin S}\mu_j(\beta)\Big).
+\end{equation}
+Reversing the list preserves both groups, while negating the phases negates their imbalance.
+Consequently,
+\begin{equation}\label{eq:sign}
+P(\pi)=-P(0).
+\end{equation}
+
+\paragraph{Finding $\beta$.} The function $P$ is continuous, so~\eqref{eq:sign} guarantees a
+zero $\beta^\ast\in[0,\pi]$. Use an endpoint if its imbalance is already zero; otherwise
+bisect. At the root, the two phase sums are equal, giving a balanced split and hence
+$\varphi=0$ by Sec.~\ref{sec:cond}. The required pivot is $g=R_z(\alpha)R_y(\beta^\ast)$.
+
+The split is fixed in advance, so each trial requires only the spectrum of $C$ and sorting
+its $D$ phases. To compute $C$ efficiently, note that $X_gX_g^\dagger+Y_gY_g^\dagger=I$
+makes the positive polar factors commute. Thus $C=-i\operatorname{polar}(X_g^\dagger Y_g)$,
+where $\operatorname{polar}$ is the unitary polar factor, requiring one singular-value
+decomposition. A trial costs $O(D^3)$ arithmetic operations and $O(D^2)$ storage.
+
+For singular blocks or coincident crossing angles, approximate $U$ by generic unitaries.
+Compactness of the unitary groups gives a convergent subsequence of the pivots and unitary
+polar factors. Their limits remain valid polar factors for the limiting blocks, and the
+balanced-split condition is preserved. This extends the existence result to these cases.
 
 \subsection{Gate count}\label{sec:count}
 

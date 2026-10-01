@@ -209,7 +209,7 @@ positions. Let $S$, with $|S|=D/2$, denote this subset. Then
 where the integer $\ell$ is set by the branches $m_k$ and can take any value. Hence $\varphi$ can
 be set to zero iff
 \begin{equation}\label{eq:split}
-\sum_{k\in S}\mu_k-\sum_{k\notin S}\mu_k=-2\pi\ell\qquad\text{for some }\ell\in\mathbb Z ,
+\sum_{k\in S}\mu_k-\sum_{k\notin S}\mu_k=-2\pi\ell\qquad\text{for some }\ell\in\mathbb Z .
 \end{equation}
 We call such an $S$ a \emph{balanced split}. For a fixed $C$ this is nongeneric: the left side of~\eqref{eq:split}
 varies continuously with $C$, while the right side is discrete. The pivot, however, gives a
@@ -218,93 +218,78 @@ in $\beta$, and Sec.~\ref{sec:exist} shows that varying $\beta$ always produces 
 
 \subsection{Choosing the pivot gate}\label{sec:exist}
 
-A single split suffices: take the middle half of an ordered eigenphase list. We choose the
-pivot path so that this list reverses and changes sign between its endpoints. The middle
-half remains the middle half, so its phase imbalance changes sign and must pass through zero.
-Here $n\ge3$, so $D=2^{n-1}$ is divisible by four. We first consider generic $U$; exceptional
-cases follow by a limit.
+A direct search for a balanced split would test all $\tfrac12\binom{D}{D/2}$ splits. Instead, we
+fix one split in advance and choose the pivot so that this split balances, finding each angle by a
+one-dimensional search. The idea is that as $\beta$ runs from $0$ to $\pi$, the pivot carries $C$
+to $C^{-1}$, which negates every eigenphase. Negating an increasing list reverses it, and reversal
+maps the middle half of the list to itself, so the imbalance between the middle half and the
+outer quarters changes sign and must vanish somewhere. The paragraphs below make this precise.
+\emph{The path} establishes the inversion. Because eigenphases are defined only modulo $2\pi$, the
+list needs consistent branches along the path; \emph{choosing $\alpha$} provides them by making the
+total phase change sign too, which reduces to a counting condition solved by sorting $D$ angles.
+\emph{Choosing $\beta$} then locates the zero of the imbalance by bisection. Both steps are
+intermediate-value arguments, one discrete and one continuous, so no subset is ever enumerated.
 
-Write the top-row blocks of $U$ as $(X,Y)$. For $g=R_z(\alpha)R_y(\beta)$, the top-row
-blocks of $U(g\otimes I)$ are
+\paragraph{The path $C(\beta)$.} Write $U=\begin{psmallmatrix}X&Y\\ \ast&\ast\end{psmallmatrix}$
+in $D\times D$ blocks, where $D=2^{n-1}$ is divisible by four, and assume $X$ and $Y$ are
+invertible, which holds for generic $U$. With $c=\cos(\beta/2)$ and $s=\sin(\beta/2)$, the pivot
+$g$ gives $U(g\otimes I)$ the top-row blocks
 \begin{equation}\label{eq:path}
 X_g=e^{-i\alpha/2}c\,X+e^{i\alpha/2}s\,Y,\qquad
-Y_g=-e^{-i\alpha/2}s\,X+e^{i\alpha/2}c\,Y ,
+Y_g=-e^{-i\alpha/2}s\,X+e^{i\alpha/2}c\,Y .
 \end{equation}
-where $c=\cos(\beta/2)$ and $s=\sin(\beta/2)$. Their polar decompositions
-$X_g=S_{X_g}U_{X_g}$ and $Y_g=S_{Y_g}U_{Y_g}$ give the Block-ZXZ factor
+For fixed $\alpha$, the multiplexor matrix of~\eqref{eq:zxz} is
 \begin{equation}\label{eq:Cdef}
-C(g)=-i\,U_{X_g}^{\dagger}U_{Y_g}.
+C(\beta)=-i\,X_g^\dagger\,(X_gX_g^\dagger)^{-1/2}(Y_gY_g^\dagger)^{-1/2}\,Y_g .
+\end{equation}
+At $\beta=0$ and $\beta=\pi$, \eqref{eq:path} gives $(X_g,Y_g)=(e^{-i\alpha/2}X,\,e^{i\alpha/2}Y)$
+and $(e^{i\alpha/2}Y,\,-e^{-i\alpha/2}X)$, and~\eqref{eq:Cdef} gives
+\begin{equation}\label{eq:inv}
+C(\pi)=C(0)^\dagger=C(0)^{-1}.
 \end{equation}
 
-\paragraph{Choosing $\alpha$.} For generic $U$, $X$ and $Y$ are invertible. Let $\rho_k$
-be the eigenvalues of $X^{-1}Y$ and $\tau_k=e^{i\alpha}\rho_k$. Choose $\alpha$ so that
-exactly $D/2$ of the $\tau_k$ lie in each of the open upper and lower half-planes. Such a choice exists for generic $U$: rotating by $\pi$ changes the number
-in the upper half-plane from $N$ to $D-N$, and each distinct real-axis crossing changes this
-count by one. It must therefore attain $D/2$. The crossing angles are
-$\alpha=-\arg\rho_k\pmod\pi$; choose a point between crossings with the required count.
-
-Fix this $\alpha$ and vary $\beta$ from $0$ to $\pi$. Up to constant phase factors,
+\paragraph{Choosing $\alpha$.} Comparing the ordered lists at the two ends requires their sum,
+the phase of $\det C$, to change sign as well. By~\eqref{eq:Cdef}, $\det C$ has the phase of
+$\det Y_g/\det X_g$, since the inverse square roots have positive determinants and $(-i)^D=1$.
+With $\tau_k=e^{i\alpha}\rho_k$, where $\rho_k$ are the eigenvalues of $X^{-1}Y$, and up to
+constant phases,
 \begin{equation}\label{eq:dets}
 \det X_g\propto\det X\prod_k(c+s\tau_k),\qquad
 \det Y_g\propto\det Y\prod_k(c-s/\tau_k).
 \end{equation}
-Since no $\tau_k$ is real, these determinants never vanish and $C(\beta):=C(g)$ is continuous.
-At $\beta=\pi$, the blocks have swapped and the second has changed sign, so
-\begin{equation}\label{eq:inv}
-C(\pi)=C(0)^\dagger=C(0)^{-1}.
+If no $\tau_k$ is real, $X_g$ and $Y_g$ stay invertible and $C(\beta)$ is continuous. Each factor
+moves from $1$ within the half-plane of $\tau_k$, so with $t_k=\arg\tau_k\in(-\pi,\pi)$ their
+phases change by $t_k$ and $\operatorname{sgn}(t_k)\pi-t_k$, and the phase of $\det C$ changes by
+$\sum_k\operatorname{sgn}(t_k)\pi-2\sum_k t_k$. The first sum cancels when exactly $D/2$ of the
+$\tau_k$ lie in each open half-plane. Such an $\alpha$ exists, since rotating by $\pi$ turns an
+upper-half-plane count $N$ into $D-N$ and the count changes by one at each crossing of the real
+axis. To find it, note that $\tau_k$ is real exactly when $\alpha\equiv-\arg\rho_k\pmod\pi$; these
+crossing angles split $[0,2\pi)$ into intervals of constant count, and we take the midpoint of an
+interval with count $D/2$. The continuous phase $\sigma(\beta)$ of $\det C$, with
+$\sigma(0)=\sum_k t_k$, then satisfies
+\begin{equation}\label{eq:sigma}
+\sigma(\pi)=-\sigma(0).
 \end{equation}
-Thus the endpoint eigenphases are negatives of the starting ones, modulo $2\pi$.
 
-\paragraph{Choosing the split.} To make this reversal precise, first fix the total phase
-$\sigma(\beta)$ of $\det C(\beta)$. Put $t_k=\arg\tau_k\in(-\pi,\pi)$ and use
-\begin{equation}\label{eq:m}
-\sigma(\beta)=\sum_k\big(t_k+\arg(c-s/\tau_k)-\arg(c+s\tau_k)\big).
-\end{equation}
-Each polar factor has the same determinant phase as its block, and $(-i)^D=1$, so
-$e^{i\sigma}=\det C$. The arguments in~\eqref{eq:m} are principal values: both factors
-start at $1$ and stay in the half-plane containing $\tau_k$, making $\sigma$ continuous.
-Their arguments end at $\operatorname{sgn}(t_k)\pi-t_k$ and $t_k$, respectively. With equal
-numbers of positive and negative $t_k$, this gives $\sigma(\pi)=-\sigma(0)$.
-
-Now choose real eigenphases $\mu_j$, allowing $2\pi$ shifts, so that
+\paragraph{Choosing $\beta$.} List the eigenphases of $C(\beta)$ as real numbers
 \[
-\mu_0(\beta)\le\cdots\le\mu_{D-1}(\beta)\le\mu_0(\beta)+2\pi,
-\qquad \sum_k\mu_k(\beta)=\sigma(\beta).
+\nu_0(\beta)\le\cdots\le\nu_{D-1}(\beta)\le\nu_0(\beta)+2\pi,\qquad
+\sum_j\nu_j(\beta)=\sigma(\beta).
 \]
-Start with sorted principal phases. Move the smallest phase to the end after adding $2\pi$,
-or the largest to the front after subtracting $2\pi$, until the sum is $\sigma$. The total-phase
-condition fixes the cyclic order. The resulting phases vary continuously: a phase crossing the argument
-cut is compensated by the corresponding $2\pi$ shift. Equations~\eqref{eq:inv}
-and~\eqref{eq:m} then imply
-\[
-\mu_j(\pi)=-\mu_{D-1-j}(0).
-\]
-Choose the fixed middle half $S=\{D/4,\dots,3D/4-1\}$ and define its imbalance with the
-outer quarters by
+This fixes the list, since a cyclic shift changes the sum by $2\pi$, and makes it continuous in
+$\beta$. Because negation reverses an increasing list, \eqref{eq:inv} and~\eqref{eq:sigma} give
+$\nu_j(\pi)=-\nu_{D-1-j}(0)$. The middle half $S=\{D/4,\dots,3D/4-1\}$ is invariant under
+$j\mapsto D-1-j$, so the imbalance
 \begin{equation}\label{eq:P}
-P(\beta)=\frac12\Big(\sum_{j\in S}\mu_j(\beta)-\sum_{j\notin S}\mu_j(\beta)\Big).
+P(\beta)=\sum_{j\in S}\nu_j(\beta)-\sum_{j\notin S}\nu_j(\beta)
 \end{equation}
-Reversing the list preserves both groups, while negating the phases negates their imbalance.
-Consequently,
+satisfies
 \begin{equation}\label{eq:sign}
-P(\pi)=-P(0).
+P(\pi)=-P(0),
 \end{equation}
-
-\paragraph{Finding $\beta$.} The function $P$ is continuous, so~\eqref{eq:sign} guarantees a
-zero $\beta^\ast\in[0,\pi]$. Use an endpoint if its imbalance is already zero; otherwise
-bisect. At the root, the two phase sums are equal, giving a balanced split and hence
-$\varphi=0$ by Sec.~\ref{sec:cond}. The required pivot is $g=R_z(\alpha)R_y(\beta^\ast)$.
-
-The split is fixed in advance, so each trial requires only the spectrum of $C$ and sorting
-its $D$ phases. To compute $C$ efficiently, note that $X_gX_g^\dagger+Y_gY_g^\dagger=I$
-makes the positive polar factors commute. Thus $C=-i\operatorname{polar}(X_g^\dagger Y_g)$,
-where $\operatorname{polar}$ is the unitary polar factor, requiring one singular-value
-decomposition. A trial costs $O(D^3)$ arithmetic operations and $O(D^2)$ storage.
-
-For singular blocks or coincident crossing angles, approximate $U$ by generic unitaries.
-Compactness of the unitary groups gives a convergent subsequence of the pivots and unitary
-polar factors. Their limits remain valid polar factors for the limiting blocks, and the
-balanced-split condition is preserved. This extends the existence result to these cases.
+and bisection finds $\beta^\ast\in[0,\pi]$ with $P(\beta^\ast)=0$. There the half-sums agree, so
+taking $\theta_j=\nu_j(\beta^\ast)$ satisfies~\eqref{eq:split} with no further branch shift and
+gives $\varphi=0$; the pivot $g=R_z(\alpha)R_y(\beta^\ast)$ lets the additional CX merge.
 
 \subsection{Gate count}\label{sec:count}
 
@@ -340,12 +325,11 @@ improvement is modest in absolute terms. The gap to the lower bound ($\tfrac{12}
 and numerical compilers reach fewer CX gates for small $n$~\cite{brickwall,squander}, though
 without closed forms or guarantees.
 
-The construction is not closed form: each node needs a one-dimensional root search. The sign
-change~\eqref{eq:sign} guarantees that the search succeeds, and the CX count does not depend
-on how the root is found. As implemented, however, evaluating the sign of $P$ ranges over all
-$\binom{D}{D/2}/2$ balanced splits. That is cheap for $n\le5$ but grows quickly with $n$. An
-efficient evaluation of the sign of $P$, or a direct way to find a split that crosses zero, would
-remove this classical overhead and is left open.
+Each node requires a one-dimensional root search, with the sign change~\eqref{eq:sign}
+guaranteeing a solution. The middle-half construction fixes the split in advance. Evaluating
+its imbalance requires matrix factorizations and sorting $D$ eigenphases, for $O(D^3)$
+arithmetic work and $O(D^2)$ storage per trial. The CX count is independent of the method
+used to locate the root.
 
 \begin{thebibliography}{9}
 \bibitem{smb} V.~V.~Shende, S.~S.~Bullock, I.~L.~Markov, \emph{Synthesis of quantum logic

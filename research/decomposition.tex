@@ -29,7 +29,7 @@
 \maketitle
 
 \begin{abstract}
-The best known analytical method for unitary synthesis requires $\sim\tfrac{22}{48}4^n$ CX gates for an arbitrary $n$-qubit unitary. We report an improvement using $\sim\tfrac{21}{48}4^n$: a free single-qubit gate can remove a CX at each recursive step and a parity rule with the intermediate value theorem shows that it always exists. We verify the improved decomposition with numerical experiments.
+The best known analytical method for unitary synthesis requires $\sim\tfrac{22}{48}4^n$ CX gates for an arbitrary $n$-qubit unitary. We report an improvement using $\sim\tfrac{21}{48}4^n$: a single-qubit pivot gate can remove a CX at each recursive step and a parity rule with the intermediate value theorem shows that it always exists. We verify the improved decomposition with numerical experiments.
 \end{abstract}
 
 %==========================================================================================
@@ -94,18 +94,16 @@ is generically nonzero.
 \end{quantikz}
 \;=\;
 \begin{quantikz}[column sep=0.3cm, row sep={0.8cm,between origins}, remember picture]
-& & & \gate[style={newgate,name=fu}]{u^\dagger} & \gate[style={name=frz}]{R_z}\vqw{1} & \gate{H} & \gate{R_z}\vqw{1} & \gate{H} & \gate{R_z}\vqw{1} & & \\
+& & & \gate[style={newgate,name=fu}]{g^\dagger} & \gate[style={name=frz}]{R_z}\vqw{1} & \gate{H} & \gate{R_z}\vqw{1} & \gate{H} & \gate{R_z}\vqw{1} & & \\
 & \qwbundle{} & & \gate{\phantom{W}} & \gate[style={muxctrl,name=fmc}]{} & \gate{\phantom{W}} & \gate[style=muxctrl]{} & \gate{\phantom{W}} & \gate[style=muxctrl]{} & \gate{\phantom{W}} &
 \end{quantikz}%
 \begin{tikzpicture}[remember picture, overlay]
 \def\p{3pt}
 \draw[cnew, dotted, thick, rounded corners=3pt]
-  ($(fu.north west)+(-\p,\p)$) -- ($(frz.north east)+(\p,\p)$)
-  -- ($(frz.east|-fmc.south)+(\p,-\p)$) -- ($(frz.west|-fmc.south)+(-\p,-\p)$)
-  -- ($(frz.west|-fu.south)+(-\p,-\p)$) -- ($(fu.south west)+(-\p,-\p)$) -- cycle;
+  ($(frz.north west)+(-\p,\p)$) rectangle ($(frz.east|-fmc.south)+(\p,-\p)$);
 \end{tikzpicture}
-\caption{One step of the recursive decomposition. We extend Block-ZXZ with a free single-qubit gate
-$u^\dagger$ on the top qubit (blue), which allows the first multiplexed rotation to use one fewer CX gate (dotted outline). This pattern is repeated on the four $(n-1)$-qubit children, leading to $(4^{n-2}-1)/3$ fewer CX gates.}
+\caption{The recursive template for decomposing a target $n$-qubit unitary $U$. We add a single-qubit pivot gate
+$g^\dagger$ (blue) which allows the left-side multiplexed rotation (blue outline) to use one fewer CX gate. This template is applied to the four generic $(n-1)$-qubit unitaries (blank boxes), leading to a reduction of $(4^{n-2}-1)/3$ CX gates.}
 \label{fig:node}
 \end{figure}
 
@@ -129,7 +127,7 @@ Theoretical lower bound & 0 & 3 & 14 & 61 & 252 & 1020 & $(1/4)\cdot(4^n-3n-1)$\
 \label{tab:counts}
 \end{table}
 
-We extend Block-ZXZ with a free single-qubit gate on the top qubit, chosen at every node so that
+We extend Block-ZXZ with a single-qubit pivot gate on the top qubit, chosen at every node so that
 this angle vanishes and one more CX merges into the central factor, which lowers the count to
 $\tfrac{21}{48}4^n-\tfrac32 2^n+2$ (Table~\ref{tab:counts}). Section~\ref{sec:alg} derives the
 construction and proves that the gate always exists, and Sec.~\ref{sec:res} verifies it
@@ -139,62 +137,76 @@ numerically.
 %==========================================================================================
 \section{An improved algorithm}\label{sec:alg}
 
-Throughout, $n\ge3$, $D=2^{n-1}$ (so $D\equiv0\bmod4$), and $t=q_{n-1}$ is the top qubit.
-Qubits are ordered with $t$ most significant, so $U=\begin{psmallmatrix}X&Y\\ \ast&\ast
-\end{psmallmatrix}$ in $D\times D$ blocks. Circuits are drawn left to right in time. Operator
-products act right to left.
-
-Block-ZXZ~\cite{zxz} factors a unitary into three block-diagonal factors separated by Hadamard
-gates on $t$. We apply it to $U(u\otimes I)$ instead of $U$, where $u$ is a free single-qubit gate
-on $t$:
+As illustrated in Fig.~\ref{fig:node}, we add a pivot gate $g$ on $t$ such that $U$ has the decomposition
 \begin{equation}\label{eq:zxz}
-U(u\otimes I)=(A_1\oplus A_2)\,(H\otimes I)\,(I\oplus B)\,(H\otimes I)\,(I\oplus C),\qquad
-C=-i\,U_{X_u}^\dagger U_{Y_u} ,
+U=(\ast)\,(I\oplus C)\,(g^\dagger\otimes I),
 \end{equation}
-where $X_u=S_{X_u}U_{X_u}$ and $Y_u=S_{Y_u}U_{Y_u}$ are polar decompositions of the top-row blocks
-of $U(u\otimes I)$. Multiplying by $u^\dagger\otimes I$ on the right gives the circuit of
-Fig.~\ref{fig:zxz}: $u^\dagger$ comes first and merges with the neighbouring single-qubit gates at
-no CX cost. Since $C$ is computed from $X_u$ and $Y_u$, the gate $u$ changes $C$, and with it the
-rotation angles of the left-side multiplexor.
-
-\begin{figure}[t]
-\centering
-\begin{quantikz}[column sep=0.3cm, row sep={0.8cm,between origins}]
-& & \gate[2]{U} & \\
-& \qwbundle{} & &
-\end{quantikz}
-\;=\;
-\begin{quantikz}[column sep=0.3cm, row sep={0.8cm,between origins}]
-& & \gate[style=newgate]{u^\dagger} & \ctrl{1} & \gate{H} & \ctrl{1} & \gate{H} & \gate[style=muxctrl]{}\vqw{1} & \\
-& \qwbundle{} & & \gate{C} & & \gate{B} & & \gate{A} &
-\end{quantikz}
-\caption{The factorization~\eqref{eq:zxz} as a circuit. The free gate $u^\dagger$ (blue) acts first;
-$I\oplus C$ and $I\oplus B$ are controlled gates on the lower register, and the square marks the
-multiplexed $A_1\oplus A_2$ ($A_1$ when $t=0$, $A_2$ when $t=1$). Demultiplexing these three
-factors gives the node of Fig.~\ref{fig:node}.}
-\label{fig:zxz}
-\end{figure}
-
-After demultiplexing, $I\oplus C$ gives $W_c$ and the left-side multiplexor, $A_1\oplus A_2$ gives
-the right-side multiplexor and $V_a$, and the central factor becomes the two Hadamards around
-$\tilde B$, a block-diagonal gate that collects $B$, the neighbouring $(n-1)$-qubit gates $V_c$
-and $W_a$, and the merged CX gates. Figure~\ref{fig:fold}a shows the left-side multiplexor and
-$\tilde B$ for $n=3$. A CX at the
-inner end of an outer multiplexor merges because $(H\otimes I)\,\CX(q,t)=\CZ(q,t)\,(H\otimes I)$
-and $\CZ(q,t)=I\oplus Z_q$ is block-diagonal. Block-ZXZ merges two CX gates this way, one from each
-outer multiplexor~\cite[Sec.~5.2]{zxz}. We show that a suitable $u$ lets a third merge, a second
-one from the left-side multiplexor (Sec.~\ref{sec:fold}), when this is possible
-(Sec.~\ref{sec:cond}), how to choose $u$ (Sec.~\ref{sec:exist}), and what it saves
+where $I\oplus C$ is the left-side multiplexor, and $(\ast)$ collects the remaining right-side gates.
+The gate $g$ changes $C$; we call it a pivot because it is rotated until $C$ has a balanced split.
+We show that a suitable $g$ lets this multiplexor merge an additional CX (Sec.~\ref{sec:fold}), when this is possible
+(Sec.~\ref{sec:cond}), how to choose $g$ (Sec.~\ref{sec:exist}), and what it saves
 (Sec.~\ref{sec:count}).
 
 \subsection{Merging an additional CX into the central multiplexor}\label{sec:fold}
 
-After the Block-ZXZ decomposition, we first demultiplex only the left-side factor $I\oplus C$. By~\eqref{eq:demux},
-$I\oplus C=(I\otimes V_c)\,\Delta(\theta)\,(I\otimes W_c)$ with
+We parameterize the pivot as
+\begin{equation}
+g(\alpha,\beta)=R_z(\alpha)R_y(\beta),
+\end{equation}
+so that
+\begin{equation}
+U=(*)\bigl(I\oplus C(\alpha,\beta)\bigr)
+\bigl(g^\dagger(\alpha,\beta)\otimes I\bigr).
+\end{equation}
+
+Let
+\begin{equation}
+C(\alpha,\beta)
+=
+V_c
+\operatorname{diag}\!\left(e^{i\theta_0},\ldots,e^{i\theta_{D-1}}\right)
+V_c^\dagger,
+\qquad
+\boldsymbol{\theta}
+=
+\begin{bmatrix}
+\theta_0 & \cdots & \theta_{D-1}
+\end{bmatrix}^{T},
+\end{equation}
+with \(D=2^{n-1}\). The multiplexor angles satisfy
+\begin{equation}
+\boxed{
+\boldsymbol{\varphi}
+=
+\frac{1}{D}H_D\boldsymbol{\theta}
+}
+\end{equation}
+up to the Gray-code row ordering.
+
+For the final rotation,
+\begin{equation}
+\varphi_r(\alpha,\beta)
+=
+\frac{1}{D}\mathbf{h}_r^T\boldsymbol{\theta}(\alpha,\beta)
+=
+\frac{1}{D}
+\sum_{j=0}^{D-1}
+(-1)^{j_{n-2}}
+\theta_j(\alpha,\beta).
+\end{equation}
+We choose \(\alpha,\beta\) such that
+\begin{equation}
+\boxed{
+\varphi_r(\alpha,\beta)=0,
+}
+\end{equation}
+so the corresponding \(R_z(\varphi_r)\) is the identity and the adjacent CX can be removed.
+
+By~\eqref{eq:demux}, we demultiplex the left-side factor to obtain
 \begin{equation}\label{eq:democ}
 C=V_c\operatorname{diag}\big(e^{i\theta_1},\dots,e^{i\theta_D}\big)V_c^\dagger ,
 \end{equation}
-so the angles $\theta_j$ are the eigenphases $\mu_1,\dots,\mu_D$ of $C$, taken modulo $2\pi$.
+where the angles $\theta_j$ are the eigenphases $\mu_1,\dots,\mu_D$ of $C$, taken modulo $2\pi$.
 In Gray-code form~\cite{mottonen}, $\Delta(\theta)$ is a sequence of $D$ rotations $R_z(\varphi_k)$
 on $t$, each followed by a CX onto $t$, and the angles $\varphi_k$ are the Walsh--Hadamard
 coefficients of the $\theta_j$. The circuit ends with $\CX(q_0,t)$, $R_z(\varphi)$,
@@ -202,14 +214,8 @@ $\CX(q_{n-2},t)$, where
 \begin{equation}\label{eq:phi}
 \varphi=\frac1D\sum_{j}(-1)^{j_{n-2}}\,\theta_j
 \end{equation}
-is the coefficient of the highest control bit $j_{n-2}$ (Fig.~\ref{fig:fold}a). If $\varphi=0$,
-the two CX gates are adjacent and both fold, as the block-diagonal
-$\CZ(q_0,t)\CZ(q_{n-2},t)=I\oplus Z_{q_0}Z_{q_{n-2}}$ (Fig.~\ref{fig:fold}b). Together with $V_c$, the right-side $W_a$ and the CZ that Block-ZXZ already
-merges from the right-side multiplexor, the central factor to be demultiplexed becomes
-\begin{equation}\label{eq:btilde}
-\tilde B=W_aV_c\ \oplus\ Z_{q_{n-2}}\,W_aBV_c\,Z_{q_0}Z_{q_{n-2}} .
-\end{equation}
-The only change from Block-ZXZ is the extra $Z_{q_0}$, the third merged CX. The central
+is the angle corresponding to the highest control bit $j_{n-2}$ (Fig.~\ref{fig:fold}a). If $\varphi=0$,
+the final CX gate can be merged through the Hadamard (Fig.~\ref{fig:fold}b). The central
 multiplexor keeps its cost, and the left-side multiplexor drops from $D-1$ to $D-2$ CX gates.
 
 \begin{figure}[t]
@@ -217,22 +223,22 @@ multiplexor keeps its cost, and the left-side multiplexor drops from $D-1$ to $D
 \begin{tabular}{@{}l@{}}
 \textbf{(a) Block-ZXZ: one CX merged from the left}\\[2pt]
 \begin{quantikz}[column sep=0.18cm, row sep={0.65cm,between origins}]
-\lstick{$t=q_2$} & \gate[style=wirethru]{\phantom{u^\dagger}} & \gate{R_z(\varphi_0)} & \targ{} & \gate{R_z(\varphi_1)} & \targ{} & \gate{R_z(\varphi_2)} & \targ{}\gategroup[3,steps=4,style={dashed,rounded corners,fill=black!8,draw=black!50,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=-0.1cm}]{{\footnotesize\color{black!60} 1 fold into $\tilde B$}} & \gate{R_z(\varphi)} & \gate{H} & \ctrl{1} & \\
-\lstick{$q_1$} & & & & & \ctrl{-1} & & & & & \gate[2]{\tilde B} & \\
+\lstick{$t=q_2$} & \gate[style=wirethru]{\phantom{g^\dagger}} & \gate{R_z(\varphi_0)} & \targ{} & \gate{R_z(\varphi_1)} & \targ{} & \gate{R_z(\varphi_2)} & \targ{} & \gate{R_z(\varphi)} & \targ{}\gategroup[3,steps=2,style={dashed,rounded corners,fill=black!8,draw=black!50,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=-0.1cm}]{{\footnotesize\color{black!60} 1 merge}} & \gate{H} & \\
+\lstick{$q_1$} & & & & & \ctrl{-1} & & & & \ctrl{-1} & & \\
 \lstick{$q_0$} & & & \ctrl{-2} & & & & \ctrl{-2} & & & &
 \end{quantikz}\\[40pt]
 \textbf{(b) this work: two CX gates merged from the left}\\[2pt]
 \begin{quantikz}[column sep=0.18cm, row sep={0.65cm,between origins}]
-\lstick{$t=q_2$} & \gate[style=newgate]{u^\dagger} & \gate{R_z(\varphi_0)} & \targ{} & \gate{R_z(\varphi_1)} & \targ{} & \gate{R_z(\varphi_2)} & \gate{H}\gategroup[3,steps=2,style={dashed,rounded corners,fill=cnew!10,draw=cnew,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=-0.1cm}]{{\footnotesize\color{cnew} 2 folds into $\tilde B$}} & \ctrl{1} & \\
-\lstick{$q_1$} & & & & & \ctrl{-1} & & & \gate[2]{\tilde B} & \\
-\lstick{$q_0$} & & & \ctrl{-2} & & & & & &
+\lstick{$t=q_2$} & \gate[style=newgate]{g^\dagger} & \gate{R_z(\varphi_0)} & \targ{} & \gate{R_z(\varphi_1)} & \targ{} & \gate{R_z(\varphi_2)} & \targ{}\gategroup[3,steps=3,style={dashed,rounded corners,fill=cnew!10,draw=cnew,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=-0.1cm}]{{\footnotesize\color{cnew} 2 merges}} & \targ{} & \gate{H} & \\
+\lstick{$q_1$} & & & & & \ctrl{-1} & & & \ctrl{-1} & & \\
+\lstick{$q_0$} & & & \ctrl{-2} & & & & \ctrl{-2} & & &
 \end{quantikz}
 \end{tabular}
-\caption{Detailed view of the dotted region of Fig.~\ref{fig:node} together with the central gate
-$\tilde B$ ($n=3$). (a)~Block-ZXZ: $R_z(\varphi)$ separates the last two CX gates of the left-side
-multiplexor, so only the last one merges into $\tilde B$ (grey). (b)~This work: the free gate
-$u^\dagger$ makes $\varphi=0$ (Sec.~\ref{sec:exist}), so $\CX(q_0,t)$ merges as well, as the extra
-$Z_{q_0}$ in~\eqref{eq:btilde} (blue). The left-side multiplexor uses $2$ CX gates instead of $3$.}
+\caption{Detailed view of $g^\dagger$ and the left-side multiplexor (blue region of Fig.~\ref{fig:node} for $n=3$).
+(a)~Block-ZXZ: $R_z(\varphi)$ separates the last two CX gates, so only the last one merges through the
+Hadamard into the central factor (grey). (b)~This work: the pivot gate $g^\dagger$ makes $\varphi=0$, so
+the last two CX gates are adjacent and both merge (blue). The left-side multiplexor uses $2$ CX gates
+instead of $3$.}
 \label{fig:fold}
 \end{figure}
 
@@ -260,21 +266,28 @@ should be enough to meet it.
 
 \subsection{Choosing the pivot gate}\label{sec:exist}
 
-The gate $u$ enters~\eqref{eq:zxz} only through the top-row blocks $X_u$, $Y_u$. The strategy is to move
+Block-ZXZ computes $C$ from the top row of the matrix it factors. Write
+$U(g\otimes I)=\begin{psmallmatrix}X_g&Y_g\\ \ast&\ast\end{psmallmatrix}$ in $D\times D$ blocks,
+with polar decompositions $X_g=S_{X_g}U_{X_g}$ and $Y_g=S_{Y_g}U_{Y_g}$. Then
+\begin{equation}\label{eq:Cdef}
+C=-i\,U_{X_g}^\dagger U_{Y_g} ,
+\end{equation}
+and $g$ changes $C$ by mixing the top-row blocks $X,Y$ of $U=\begin{psmallmatrix}X&Y\\ \ast&\ast
+\end{psmallmatrix}$. The strategy is to move
 $C$ along a path whose endpoints are inverse to each other, and to show that a function
 detecting balanced splits changes sign between them.
 
 A phase gate $R_z(\alpha)$ alone does not help: it maps $(X,Y)\mapsto(e^{-i\alpha/2}X,
 e^{i\alpha/2}Y)$ and multiplies $C$ by $e^{i\alpha}$, which leaves~\eqref{eq:split} unchanged. An
-$R_y$ rotation mixes the blocks, so we take $u(\beta)=R_z(\alpha)R_y(\beta)$, $\beta\in[0,\pi]$.
-With $X,Y$ the top-row blocks of $U$, the blocks $X(\beta)=X_{u(\beta)}$ and $Y(\beta)=Y_{u(\beta)}$
-are, up to the phases $e^{\mp i\alpha/2}$,
+$R_y$ rotation mixes the blocks, so we take $g(\beta)=R_z(\alpha)R_y(\beta)$, $\beta\in[0,\pi]$.
+The blocks $X(\beta)=X_{g(\beta)}$ and $Y(\beta)=Y_{g(\beta)}$ are, up to the phases
+$e^{\mp i\alpha/2}$,
 \begin{equation}\label{eq:path}
 \begin{pmatrix}X(\beta)&Y(\beta)\end{pmatrix}
 =\begin{pmatrix}X&Y\end{pmatrix}
 \begin{pmatrix}c\,I&-s\,I\\ s\,I&c\,I\end{pmatrix},\qquad c=\cos\tfrac\beta2,\ s=\sin\tfrac\beta2 ,
 \end{equation}
-and $C(\beta)=-i\,U_{X(\beta)}^\dagger U_{Y(\beta)}$ as in~\eqref{eq:zxz}.
+and $C(\beta)=-i\,U_{X(\beta)}^\dagger U_{Y(\beta)}$ as in~\eqref{eq:Cdef}.
 
 \paragraph{The endpoints.} At $\beta=\pi$, $(X(\pi),Y(\pi))=(Y,-X)$, so $U_{X(\pi)}=U_Y$,
 $U_{Y(\pi)}=-U_X$ and
@@ -314,7 +327,7 @@ P(\pi)=(-1)^{m+1}P(0).
 \end{equation}
 Finally, $\alpha$ rotates every $\tau_k$ by the same angle, and the count in~\eqref{eq:m} changes
 by one whenever a $\tau_k$ crosses the real axis, so some $\alpha$ makes $m$ even. Then
-$P(\pi)=-P(0)$ and $P$ has a zero $\beta^\ast\in[0,\pi]$. With $u=R_z(\alpha)R_y(\beta^\ast)$, $C$
+$P(\pi)=-P(0)$ and $P$ has a zero $\beta^\ast\in[0,\pi]$. With $g=R_z(\alpha)R_y(\beta^\ast)$, $C$
 has a balanced split $S$; placing $S$ on $j_{n-2}=0$ gives $\varphi=0$, and the left-side
 multiplexor contributes a second CX to the central factor.
 
@@ -353,7 +366,7 @@ and the root search succeeded on $300/300$ random three-qubit targets.
 The construction improves Block-ZXZ in the setting it was designed for: exact synthesis of every
 unitary with a guaranteed count. The leading coefficient drops from $\tfrac{22}{48}$ to
 $\tfrac{21}{48}$, about $4.5\%$ fewer CX gates asymptotically. The mechanism is the fold Block-ZXZ
-already uses; the new ingredient is a free gate that provably makes a third fold possible. The
+already uses; the new ingredient is a pivot gate that provably makes a third fold possible. The
 improvement is modest in absolute terms. The gap to the lower bound ($\tfrac{12}{48}$) remains,
 and numerical compilers reach fewer CX gates for small $n$~\cite{brickwall,squander}, though
 without closed forms or guarantees.

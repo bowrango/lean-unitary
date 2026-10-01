@@ -137,86 +137,10 @@ numerically.
 %==========================================================================================
 \section{An improved algorithm}\label{sec:alg}
 
-As illustrated in Fig.~\ref{fig:node}, we add a pivot gate $g$ on $t$ such that $U$ has the decomposition
-\begin{equation}\label{eq:zxz}
-U=(\ast)\,(I\oplus C)\,(g^\dagger\otimes I),
-\end{equation}
-where $I\oplus C$ is the left-side multiplexor, and $(\ast)$ collects the remaining right-side gates.
-The gate $g$ changes $C$; we call it a pivot because it is rotated until $C$ has a balanced split.
-We show that a suitable $g$ lets this multiplexor merge an additional CX (Sec.~\ref{sec:fold}), when this is possible
+We add a pivot gate $g$ on $t$ to each node (Fig.~\ref{fig:node}) and show that a suitable $g$ lets
+the left-side multiplexor merge an additional CX (Sec.~\ref{sec:fold}), when this is possible
 (Sec.~\ref{sec:cond}), how to choose $g$ (Sec.~\ref{sec:exist}), and what it saves
 (Sec.~\ref{sec:count}).
-
-\subsection{Merging an additional CX into the central multiplexor}\label{sec:fold}
-
-We parameterize the pivot as
-\begin{equation}
-g(\alpha,\beta)=R_z(\alpha)R_y(\beta),
-\end{equation}
-so that
-\begin{equation}
-U=(*)\bigl(I\oplus C(\alpha,\beta)\bigr)
-\bigl(g^\dagger(\alpha,\beta)\otimes I\bigr).
-\end{equation}
-
-Let
-\begin{equation}
-C(\alpha,\beta)
-=
-V_c
-\operatorname{diag}\!\left(e^{i\theta_0},\ldots,e^{i\theta_{D-1}}\right)
-V_c^\dagger,
-\qquad
-\boldsymbol{\theta}
-=
-\begin{bmatrix}
-\theta_0 & \cdots & \theta_{D-1}
-\end{bmatrix}^{T},
-\end{equation}
-with \(D=2^{n-1}\). The multiplexor angles satisfy
-\begin{equation}
-\boxed{
-\boldsymbol{\varphi}
-=
-\frac{1}{D}H_D\boldsymbol{\theta}
-}
-\end{equation}
-up to the Gray-code row ordering.
-
-For the final rotation,
-\begin{equation}
-\varphi_r(\alpha,\beta)
-=
-\frac{1}{D}\mathbf{h}_r^T\boldsymbol{\theta}(\alpha,\beta)
-=
-\frac{1}{D}
-\sum_{j=0}^{D-1}
-(-1)^{j_{n-2}}
-\theta_j(\alpha,\beta).
-\end{equation}
-We choose \(\alpha,\beta\) such that
-\begin{equation}
-\boxed{
-\varphi_r(\alpha,\beta)=0,
-}
-\end{equation}
-so the corresponding \(R_z(\varphi_r)\) is the identity and the adjacent CX can be removed.
-
-By~\eqref{eq:demux}, we demultiplex the left-side factor to obtain
-\begin{equation}\label{eq:democ}
-C=V_c\operatorname{diag}\big(e^{i\theta_1},\dots,e^{i\theta_D}\big)V_c^\dagger ,
-\end{equation}
-where the angles $\theta_j$ are the eigenphases $\mu_1,\dots,\mu_D$ of $C$, taken modulo $2\pi$.
-In Gray-code form~\cite{mottonen}, $\Delta(\theta)$ is a sequence of $D$ rotations $R_z(\varphi_k)$
-on $t$, each followed by a CX onto $t$, and the angles $\varphi_k$ are the Walsh--Hadamard
-coefficients of the $\theta_j$. The circuit ends with $\CX(q_0,t)$, $R_z(\varphi)$,
-$\CX(q_{n-2},t)$, where
-\begin{equation}\label{eq:phi}
-\varphi=\frac1D\sum_{j}(-1)^{j_{n-2}}\,\theta_j
-\end{equation}
-is the angle corresponding to the highest control bit $j_{n-2}$ (Fig.~\ref{fig:fold}a). If $\varphi=0$,
-the final CX gate can be merged through the Hadamard (Fig.~\ref{fig:fold}b). The central
-multiplexor keeps its cost, and the left-side multiplexor drops from $D-1$ to $D-2$ CX gates.
 
 \begin{figure}[t]
 \centering
@@ -235,34 +159,62 @@ multiplexor keeps its cost, and the left-side multiplexor drops from $D-1$ to $D
 \end{quantikz}
 \end{tabular}
 \caption{Detailed view of $g^\dagger$ and the left-side multiplexor (blue region of Fig.~\ref{fig:node} for $n=3$).
-(a)~Block-ZXZ: $R_z(\varphi)$ separates the last two CX gates, so only the last one merges through the
-Hadamard into the central factor (grey). (b)~This work: the pivot gate $g^\dagger$ makes $\varphi=0$, so
-the last two CX gates are adjacent and both merge (blue). The left-side multiplexor uses $2$ CX gates
-instead of $3$.}
+(a)~Block-ZXZ: $R_z(\varphi)$ separates the final CX gate from the Hadamard, so it cannot be merged into the central factor
+(grey). (b)~This work: the pivot gate $g^\dagger$ makes $\varphi=0$ so the CX gate can be merged. The left-side multiplexor uses $2$ CX gates instead of $3$.}
 \label{fig:fold}
 \end{figure}
 
+\subsection{Merging an additional CX into the central multiplexor}\label{sec:fold}
+
+We parameterize the pivot as $g:=R_z(\alpha)R_y(\beta)$ and write
+\begin{equation}\label{eq:zxz}
+U=(\ast)\,\big(I\oplus C(g)\big)\,(g^\dagger\otimes I),
+\end{equation}
+where $I\oplus C(g)$ is the left-side multiplexor and $(\ast)$ collects the remaining right-side
+gates. The gate $g$ changes $C$; we call it a pivot because it is rotated until $C$ has a balanced
+split. By~\eqref{eq:demux},
+$I\oplus C(g)=(I\otimes V_c)\,\Delta(\boldsymbol\theta)\,(I\otimes W_c)$ with
+\begin{equation}\label{eq:democ}
+C(g)=V_c\operatorname{diag}\big(e^{i\theta_0},\dots,e^{i\theta_{D-1}}\big)V_c^\dagger ,
+\end{equation}
+so the angles $\boldsymbol\theta=(\theta_0,\dots,\theta_{D-1})^{\mathsf T}$ are the eigenphases
+$\mu_0,\dots,\mu_{D-1}$ of $C(g)$ in some order, up to branch: $\theta_k=\mu_k+2\pi m_k$ with
+$m_k\in\mathbb Z$ (a $2\pi$ shift flips the sign of one eigenvector, which $V_c$ and $W_c$
+absorb). In Gray-code form~\cite{mottonen}, $\Delta(\boldsymbol\theta)$ is a
+sequence of $D$ rotations $R_z(\varphi_k)$ on $t$, each followed by a CX onto $t$, with
+\begin{equation}\label{eq:walsh}
+\boldsymbol\varphi=\frac1D H_D\,\boldsymbol\theta ,
+\end{equation}
+where $H_D$ is the $D\times D$ Walsh--Hadamard matrix with rows in Gray-code order. The circuit ends
+with $\CX(q_0,t)$, $R_z(\varphi)$, $\CX(q_{n-2},t)$ (Fig.~\ref{fig:fold}a), and the angle
+$\varphi=\varphi_{D-1}$ comes from the row $\mathbf h$ of $H_D$ for the highest control bit,
+$h_j=(-1)^{j_{n-2}}$:
+\begin{equation}\label{eq:phi}
+\varphi=\frac1D\,\mathbf h^{\mathsf T}\boldsymbol\theta .
+\end{equation}
+If $\varphi=0$, then $R_z(\varphi)$ is the identity, the last two CX gates
+are adjacent, and both merge through the Hadamard (Fig.~\ref{fig:fold}b). The central multiplexor
+keeps its cost, and the left-side multiplexor drops from $D-1$ to $D-2$ CX gates.
+
 \subsection{When is the additional merge possible?}\label{sec:cond}
 
-The angles in~\eqref{eq:phi} are fixed by $C$ up to two choices: which eigenvalue is placed on
-which basis state $j$ (the column order of $V_c$), and the branch of each $\theta_j$ (a shift by
-$2\pi$ flips the sign of one eigenvector, which $V_c$ and $W_c$ absorb). Only the split matters:
-if the eigenvalues in a set $S$, $|S|=D/2$, are placed on $j_{n-2}=0$, then
+By~\eqref{eq:phi}, $\varphi$ depends only on how the eigenphases of $C$ are assigned to the $+1$
+and $-1$ entries of $\mathbf h$. Since a common permutation of the eigenvalues and the columns of
+$V_c$ leaves~\eqref{eq:democ} unchanged, we may choose which $D/2$ eigenphases occupy the $+1$
+positions. Let $S$, with $|S|=D/2$, denote this subset. Then
 \begin{equation}\label{eq:phiS}
 \varphi=\frac1D\Big(\sum_{k\in S}\mu_k-\sum_{k\notin S}\mu_k\Big)+\frac{2\pi\ell}{D},\qquad
 \ell\in\mathbb Z,
 \end{equation}
-where $\ell$ is set by the branches and can be any integer, since each $2\pi$ shift changes it by
-one. The branches can therefore cancel the first term exactly when it is a multiple of $2\pi/D$,
-i.e.\ when $C$ has a \emph{balanced split}:
+where the integer $\ell$ is set by the branches $m_k$ and can take any value. Hence $\varphi$ can
+be set to zero iff
 \begin{equation}\label{eq:split}
-\sum_{k\in S}\mu_k-\sum_{k\notin S}\mu_k=2\pi p,\qquad p\in\mathbb Z,\quad |S|=D/2 .
+\sum_{k\in S}\mu_k-\sum_{k\notin S}\mu_k=-2\pi\ell\qquad\text{for some }\ell\in\mathbb Z ,
 \end{equation}
-Choosing $\ell=-p$ then gives $\varphi=0$. Since $e^{2\pi ip}=1$, \eqref{eq:split} says that the
-eigenvalues in $S$ and outside $S$ have equal products, $\prod_{k\in S}e^{i\mu_k}=\prod_{k\notin
-S}e^{i\mu_k}$. A generic $C$ has
-no balanced split, but~\eqref{eq:split} is a single real equation, so one free real parameter
-should be enough to meet it.
+We call such an $S$ a \emph{balanced split}. For a fixed $C$ this is nongeneric: the left side of~\eqref{eq:split}
+varies continuously with $C$, while the right side is discrete. The pivot, however, gives a
+continuous one-parameter family $C(\beta)$, so~\eqref{eq:split} becomes a scalar root condition
+in $\beta$, and Sec.~\ref{sec:exist} shows that varying $\beta$ always produces a root.
 
 \subsection{Choosing the pivot gate}\label{sec:exist}
 
@@ -270,7 +222,7 @@ Block-ZXZ computes $C$ from the top row of the matrix it factors. Write
 $U(g\otimes I)=\begin{psmallmatrix}X_g&Y_g\\ \ast&\ast\end{psmallmatrix}$ in $D\times D$ blocks,
 with polar decompositions $X_g=S_{X_g}U_{X_g}$ and $Y_g=S_{Y_g}U_{Y_g}$. Then
 \begin{equation}\label{eq:Cdef}
-C=-i\,U_{X_g}^\dagger U_{Y_g} ,
+C(g)=-i\,U_{X_g}^\dagger U_{Y_g} ,
 \end{equation}
 and $g$ changes $C$ by mixing the top-row blocks $X,Y$ of $U=\begin{psmallmatrix}X&Y\\ \ast&\ast
 \end{psmallmatrix}$. The strategy is to move
@@ -279,15 +231,15 @@ detecting balanced splits changes sign between them.
 
 A phase gate $R_z(\alpha)$ alone does not help: it maps $(X,Y)\mapsto(e^{-i\alpha/2}X,
 e^{i\alpha/2}Y)$ and multiplies $C$ by $e^{i\alpha}$, which leaves~\eqref{eq:split} unchanged. An
-$R_y$ rotation mixes the blocks, so we take $g(\beta)=R_z(\alpha)R_y(\beta)$, $\beta\in[0,\pi]$.
-The blocks $X(\beta)=X_{g(\beta)}$ and $Y(\beta)=Y_{g(\beta)}$ are, up to the phases
-$e^{\mp i\alpha/2}$,
+$R_y$ rotation mixes the blocks, so we fix $\alpha$ and vary $\beta\in[0,\pi]$ in
+$g=R_z(\alpha)R_y(\beta)$, writing $X(\beta)=X_g$, $Y(\beta)=Y_g$ and $C(\beta)=C(g)$. Up to the
+phases $e^{\mp i\alpha/2}$,
 \begin{equation}\label{eq:path}
 \begin{pmatrix}X(\beta)&Y(\beta)\end{pmatrix}
 =\begin{pmatrix}X&Y\end{pmatrix}
 \begin{pmatrix}c\,I&-s\,I\\ s\,I&c\,I\end{pmatrix},\qquad c=\cos\tfrac\beta2,\ s=\sin\tfrac\beta2 ,
 \end{equation}
-and $C(\beta)=-i\,U_{X(\beta)}^\dagger U_{Y(\beta)}$ as in~\eqref{eq:Cdef}.
+and $C(\beta)=-i\,U_{X(\beta)}^\dagger U_{Y(\beta)}$ by~\eqref{eq:Cdef}.
 
 \paragraph{The endpoints.} At $\beta=\pi$, $(X(\pi),Y(\pi))=(Y,-X)$, so $U_{X(\pi)}=U_Y$,
 $U_{Y(\pi)}=-U_X$ and

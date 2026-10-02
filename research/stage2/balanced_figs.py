@@ -6,6 +6,7 @@ Needs numpy, scipy and matplotlib, and a LaTeX installation for text rendering.
 
 Usage (from this directory): python3 balanced_figs.py, then compile ../supplementary.tex.
 """
+import math
 import os
 
 import matplotlib
@@ -14,11 +15,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
+from benchmark import compare
 from core import random_unitary
 from foldzxz_opt import PivotPath, ordered_phases, unitary_phases
 
 FIG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'figures')
 N_QUBITS, SEED = 4, 2                 # D = 2^(n-1) = 8 eigenphases
+BENCH_NS = range(3, 11)               # register sizes in the Block-ZXZ comparison
 
 
 def unit(z):
@@ -256,6 +259,42 @@ def fig_split(d, S, D):
     return fig
 
 
+def fig_benchmark():
+    """(a) CX count per 4^n and (b) synthesis time of Block-ZXZ and ours, vs n."""
+    rows = []
+    for r in compare(BENCH_NS):
+        print(f"  benchmark n={r['n']}", flush=True)
+        rows.append(r)
+    n = np.array([r['n'] for r in rows])
+    fig, (ax, tx) = plt.subplots(1, 2, figsize=(6.4, 2.6))
+
+    # On a log axis the two counts differ by a few percent and coincide; dividing by 4^n shows
+    # the leading coefficients 22/48 and 21/48 that the counts approach.
+    for key, color, a, label in [('zxz_cx', "0.35", 22 / 48, "Block-ZXZ"),
+                                 ('ours_cx', MID, 21 / 48, "ours")]:
+        ax.plot(n, [r[key] / 4.0 ** r['n'] for r in rows], "o-", color=color, ms=4, label=label)
+        ax.axhline(a, color=color, ls=":", lw=0.9)
+    bound = [math.ceil((4 ** k - 3 * k - 1) / 4) / 4.0 ** k for k in n]   # parameter count
+    ax.plot(n, bound, "o-", color="k", ms=4, label="lower bound")
+    ax.axhline(12 / 48, color="k", ls=":", lw=0.9)
+    ax.set_xlabel(r"qubits $n$")
+    ax.set_ylabel(r"leading coefficient $c_n/4^n$")
+    ax.set_xticks(n)
+    ax.legend(frameon=False, fontsize=8, loc="center right", bbox_to_anchor=(1.0, 0.45))
+    ax.set_title(r"(a) CX count", fontsize=9)
+
+    tx.plot(n, [r['zxz_time'] for r in rows], "s-", color="0.35", ms=4, label="Block-ZXZ")
+    tx.plot(n, [r['ours_time'] for r in rows], "s-", color=MID, ms=4, label="ours")
+    tx.set_yscale("log")
+    tx.set_xlabel(r"qubits $n$")
+    tx.set_ylabel("synthesis time (s)")
+    tx.set_xticks(n)
+    tx.legend(frameon=False, fontsize=8, loc="upper left")
+    tx.set_title(r"(b) runtime", fontsize=9)
+    fig.tight_layout(pad=0.3, w_pad=1.5)
+    return fig
+
+
 def main():
     d = collect()
     D = 2 ** (N_QUBITS - 1)
@@ -269,6 +308,7 @@ def main():
         'bal_beta_lifts': fig_beta_lifts(d, S),
         'bal_beta_imbalance': fig_beta_imbalance(d),
         'bal_split': fig_split(d, S, D),
+        'bal_benchmark': fig_benchmark(),
     }
     os.makedirs(FIG_DIR, exist_ok=True)
     for name, fig in figures.items():

@@ -116,8 +116,27 @@ enumeration of splits.
 
 \texttt{foldzxz\_opt.py} synthesizes Haar-random unitaries for $n=3,4,5$ and checks, for each, that
 the CX count matches the formula $c(n)=\tfrac{21}{48}4^n-\tfrac32 2^n+2$ and that the circuit
-reproduces $U$ to machine precision, up to a global phase. The figures below follow one
-Haar-random target with $n=4$ through the construction, and are produced by
+reproduces $U$ to machine precision, up to a global phase.
+
+\texttt{stage2/benchmark.py} compares the construction with Block-ZXZ on the same Haar-random
+unitaries for $n=3,\dots,10$ (Fig.~\ref{fig:benchmark}). Both CX counts match their closed forms at
+every $n$. The pivot search makes synthesis slower by a roughly constant factor, since every node
+stays $O(D^3)$ and the search adds only a bounded number of trials per node. The two methods share
+their two-qubit leaves, so the timing replaces each leaf by an exact two-qubit block counted at the
+CX cost of the standard construction and measures only the recursive decomposition.
+
+\begin{figure}[H]
+\centering
+\includegraphics{figures/bal_benchmark}
+\caption{Block-ZXZ (grey) and the pivot construction (blue) for Haar-random $n$-qubit unitaries.
+(a)~CX count divided by $4^n$, with the lower bound $\lceil\tfrac14(4^n-3n-1)\rceil/4^n$ in
+black; the dotted lines are the limits $\tfrac{22}{48}$, $\tfrac{21}{48}$ and $\tfrac{12}{48}$. (b)~Synthesis time of the recursive decomposition, on a logarithmic
+axis.}
+\label{fig:benchmark}
+\end{figure}
+
+The remaining figures follow one Haar-random target with $n=4$ through the construction, and are
+produced by
 \texttt{stage2/balanced\_figs.py}. The middle half $S$ is drawn in \textcolor{cmid}{blue} and the
 outer quarters in \textcolor{cout}{orange}.
 

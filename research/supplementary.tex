@@ -1,6 +1,6 @@
 \documentclass[11pt]{article}
 \usepackage[margin=1in]{geometry}
-\usepackage{amsmath,amssymb}
+\usepackage{amsmath,amssymb,mathtools}
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{float}
@@ -8,155 +8,172 @@
 \definecolor{cmid}{HTML}{0047CC}
 \definecolor{cout}{HTML}{D96C00}
 
-\title{Visualizing the balanced-split pivot}
-\author{Companion to \emph{One more fold per node}, Sec.~II.A--II.C}
+\title{The balanced-split pivot: implementation and experiments}
 \date{}
-
-\input{figures/bal_values}
 
 \begin{document}
 \maketitle
 
-\noindent All figures use one Haar-random four-qubit target ($n=4$, so $D=2^{n-1}=8$), computed
-with \texttt{stage2/foldzxz\_opt.py}. The middle half of the sorted list is drawn in
-\textcolor{cmid}{blue} and the outer quarters in \textcolor{cout}{orange} throughout.
+\section*{1. The search problem}
 
-\section*{1. What we want: one zero angle}
+The left-side multiplexor of a node is a Gray-code sequence of $D=2^{n-1}$ rotations
+$R_z(\varphi_k)$ on the top qubit $t$, separated by CX gates, with
+\begin{equation}\label{eq:phi}
+\boldsymbol\varphi=\tfrac1D H_D\,\boldsymbol\theta,\qquad
+\varphi:=\varphi_{D-1}=\tfrac1D\,\mathbf h^{\mathsf T}\boldsymbol\theta,\qquad h_j=(-1)^{j_{n-2}},
+\end{equation}
+where $\boldsymbol\theta$ are the eigenphases of the multiplexor matrix $C$, in any order and up to
+$2\pi$ each. The last two CX gates merge into the central factor when $\varphi=0$, that is, when the
+eigenphases $\mu_k$ of $C$ admit a \emph{balanced split}:
+\begin{equation}\label{eq:split}
+S\subset\{0,\dots,D-1\},\quad |S|=\tfrac D2,\qquad
+\sum_{k\in S}\mu_k-\sum_{k\notin S}\mu_k\in2\pi\mathbb Z .
+\end{equation}
+For a fixed $C$ this is an equal-cardinality number-partitioning problem, a constrained form of
+subset sum, posed modulo $2\pi$: split $D$ numbers into two halves of equal size and equal sum.
+The integer version is NP-complete, and the direct check visits all
+$\tfrac12\binom{D}{D/2}\sim 2^D/\sqrt{2\pi D}$ splits, which is doubly exponential in $n$. For
+continuous data and a fixed $C$, a solution generically does not exist at all.
 
-After demultiplexing, the left-side multiplexor is a Gray-code sequence of $D$ rotations
-$R_z(\varphi_k)$ separated by CX gates, with angles $\boldsymbol\varphi=\tfrac1D H_D\boldsymbol\theta$
-given by the Walsh--Hadamard transform of the multiplexor angles $\boldsymbol\theta$, which are the
-eigenphases of $C(g)$. The last rotation, between the final two CX gates, has angle
-\[
-\varphi=\tfrac1D\,\mathbf h^{\mathsf T}\boldsymbol\theta,\qquad h_j=(-1)^{j_{n-2}},
-\]
-so it compares the sum of the angles on the half $j_{n-2}=0$ with the sum on $j_{n-2}=1$. If the two
-sums agree, $\varphi=0$, the two CX gates become adjacent, and both merge into the central factor.
-We are free to decide which eigenphases go on which half (and to shift each by $2\pi$); the
-question is only whether some assignment balances. Figure~\ref{fig:pipeline} shows how the pivot
-$g=R_z(\alpha)R_y(\beta)$ controls this, and where the two one-dimensional searches enter.
+The pivot $g=R_z(\alpha)R_y(\beta)$ on $t$ replaces this search by two one-dimensional ones. It
+changes $C$ continuously, and for a suitable path it guarantees that one \emph{fixed} split, the
+middle half of the sorted eigenphases, balances somewhere along it (Fig.~\ref{fig:pipeline}).
 
 \begin{figure}[H]
 \centering
 \includegraphics{figures/bal_pipeline}
-\caption{The construction of Sec.~II.A--II.C. The pivot sets the multiplexor matrix $C$, whose
-eigenphases are the angles $\boldsymbol\theta$, and $\varphi$ is a signed sum of these. Both pivot
-angles are found by one-dimensional searches (blue); no subset of eigenphases is ever enumerated.}
+\caption{Data flow of one node. The pivot determines the top-row blocks $X_g,Y_g$ of $U(g\otimes I)$,
+hence $C$, hence $\boldsymbol\theta$ and $\varphi$. The two pivot angles are found by a scan
+($\alpha$) and a bisection ($\beta$).}
 \label{fig:pipeline}
 \end{figure}
 
-\section*{2. The path: from $C$ to $C^{-1}$}
+\section*{2. Implementation}
 
-Fix $\alpha$. As $\beta$ runs from $0$ to $\pi$ the pivot mixes the two top-row blocks of $U$ and,
-at $\beta=\pi$, swaps them with a sign. The multiplexor matrix ends at $C(\pi)=C(0)^{-1}$, so every
-eigenvalue is reflected across the real axis (Fig.~\ref{fig:endpoints}): the eigenphases are
-negated.
+All quantities below are computed by \texttt{stage2/foldzxz\_opt.py}. Write
+$U=\begin{psmallmatrix}X&Y\\ \ast&\ast\end{psmallmatrix}$ in $D\times D$ blocks, with $X,Y$
+invertible.
+
+\paragraph{Choosing $\alpha$.} Let $\rho_k$ be the eigenvalues of $X^{-1}Y$, and define
+\begin{equation}\label{eq:N}
+\tau_k=e^{i\alpha}\rho_k,\qquad N(\alpha)=\#\{k:\operatorname{Im}\tau_k>0\}.
+\end{equation}
+$N$ is constant except at the crossing angles $\alpha\equiv-\arg\rho_k\pmod\pi$, where one $\tau_k$
+crosses the real axis. The code sorts these angles, evaluates $N$ on each interval between them,
+and returns $\alpha^\ast$, the midpoint of the widest interval with $N=D/2$. This keeps every
+$\tau_k$ off the real axis, so $X_g$ and $Y_g$ stay invertible along the path. Cost: one
+eigendecomposition and one sort.
+
+\paragraph{Evaluating $C(\beta)$.} With $\alpha=\alpha^\ast$ fixed, the product of the top-row
+blocks is affine in $(\cos\beta,\sin\beta)$:
+\begin{equation}\label{eq:M}
+X_g^\dagger Y_g=K+\cos\beta\,H+\sin\beta\,B,\qquad
+A=e^{i\alpha}X^\dagger Y,\quad H=\tfrac{A+A^\dagger}2,\quad K=\tfrac{A-A^\dagger}2,\quad
+B=\tfrac{Y^\dagger Y-X^\dagger X}2 .
+\end{equation}
+The multiplexor matrix is $C(\beta)=-i\,U_{X_g}^\dagger U_{Y_g}$, and since the positive polar
+factors of $X_g$ and $Y_g$ commute, $U_{X_g}^\dagger U_{Y_g}$ is the unitary polar factor of
+$X_g^\dagger Y_g$. Each trial therefore costs one SVD, $X_g^\dagger Y_g=L\Sigma R$, giving
+$C(\beta)=-i\,LR$, followed by one eigensolve of $C(\beta)$.
+
+\paragraph{Lifting the eigenphases.} The total phase of $\det C$ is tracked analytically,
+\begin{equation}\label{eq:sigma}
+\sigma(\beta)=\sum_k\Big(t_k+\arg\big(c-s/\tau_k\big)-\arg\big(c+s\tau_k\big)\Big),\qquad
+t_k=\arg\tau_k,\quad c=\cos\tfrac\beta2,\ s=\sin\tfrac\beta2,
+\end{equation}
+which is continuous because each factor stays in the half-plane of $\tau_k$, and satisfies
+$e^{i\sigma}=\det C$, $\sigma(\pi)=-\sigma(0)$ for $\alpha=\alpha^\ast$. The principal eigenphases are
+sorted, and the lifted list is a cyclic shift of them, each shift raising the smallest phase by
+$2\pi$ and the sum by $2\pi$:
+\begin{equation}\label{eq:nu}
+\nu_0(\beta)\le\dots\le\nu_{D-1}(\beta)\le\nu_0(\beta)+2\pi,\qquad\sum_j\nu_j(\beta)=\sigma(\beta).
+\end{equation}
+The analytic $\sigma$ is used only to choose the number of shifts, the integer closest to
+$(\sigma-\sum_j\mu_j)/2\pi$, so it may be inaccurate by anything less than $\pi$; the lifted values
+themselves come from the eigenphases. This makes the list unique and continuous in $\beta$, with no
+tracking between trials.
+
+\paragraph{Choosing $\beta$.} With $S=\{D/4,\dots,3D/4-1\}$, the middle half of the list, the
+imbalance is
+\begin{equation}\label{eq:P}
+P(\beta)=\sum_{j\in S}\nu_j(\beta)-\sum_{j\notin S}\nu_j(\beta).
+\end{equation}
+Since $C(\pi)=C(0)^{-1}$, the list at $\beta=\pi$ is the reversed negative of the list at $\beta=0$,
+and $S$ is invariant under $j\mapsto D-1-j$, so $P(\pi)=-P(0)$ and $[0,\pi]$ brackets a root. $P$ is
+continuous but only piecewise smooth: it has a kink wherever an eigenphase crosses the boundary of
+$S$. The code finds $\beta^\ast$ with $P(\beta^\ast)=0$ by Brent's method, which keeps a sign-change
+bracket, so it is as safe as bisection, while taking secant and inverse-quadratic steps where $P$ is
+smooth, so it needs far fewer trials.
+
+\paragraph{Demultiplexing.} At $\beta^\ast$, the middle half of the lifted list is a contiguous
+window of the principal eigenphases in circular order, so it is recovered by checking the $D/2$
+windows of length $D/2$, not all subsets. These eigenvalues are placed on $j_{n-2}=0$, and a $2\pi$
+shift of one angle, with the matching sign flip in $W_c$, removes any remaining multiple of
+$2\pi/D$ from $\varphi$. The cost per node is $O(D^3)$ per trial and $O(D^2)$ memory, with no
+enumeration of splits.
+
+\section*{3. Experiments}
+
+\texttt{foldzxz\_opt.py} synthesizes Haar-random unitaries for $n=3,4,5$ and checks, for each, that
+the CX count matches the formula $c(n)=\tfrac{21}{48}4^n-\tfrac32 2^n+2$ and that the circuit
+reproduces $U$ to machine precision, up to a global phase. The figures below follow one
+Haar-random target with $n=4$ through the construction, and are produced by
+\texttt{stage2/balanced\_figs.py}. The middle half $S$ is drawn in \textcolor{cmid}{blue} and the
+outer quarters in \textcolor{cout}{orange}.
 
 \begin{figure}[H]
 \centering
 \includegraphics{figures/bal_endpoints}
-\caption{Endpoint spectra. The eigenvalues of $C(\pi)$ (blue rings) are the complex conjugates of
-those of $C(0)$ (black dots), by $C(\pi)=C(0)^\dagger=C(0)^{-1}$ (Eq.~10).}
+\caption{Endpoint spectra of the path. The eigenvalues of $C(\pi)$ (blue rings) are the complex
+conjugates of those of $C(0)$ (black dots), as $C(\pi)=C(0)^\dagger=C(0)^{-1}$.}
 \label{fig:endpoints}
 \end{figure}
-
-If we list the eigenphases in increasing order, negation reverses the list. The middle half of a
-list is unchanged by reversal, and so are the outer quarters. So if we could follow one sorted list
-continuously from $\beta=0$ to $\beta=\pi$, the imbalance ``middle half minus outer quarters'' would
-start at some value and end at its negative, and would vanish in between. The difficulty is that
-eigenphases live on a circle: a sorted list of real numbers needs a choice of $2\pi$ branches, and
-that choice must be the same, up to the reversal, at both ends. This is what $\alpha$ is for.
-
-\section*{3. Choosing $\alpha$: making the total phase reverse too}
-
-The branches of a sorted list (span at most $2\pi$) are fixed by its sum, the phase of $\det C$.
-For the list at $\beta=\pi$ to be the reversed negative of the list at $\beta=0$, this total
-phase $\sigma(\beta)$ must itself go from $\sigma(0)$ to $-\sigma(0)$. Section~II.C shows that
-$\sigma$ changes by
-\[
-\sum_k \operatorname{sgn}(t_k)\,\pi-2\sum_k t_k,\qquad t_k=\arg\tau_k,\quad \tau_k=e^{i\alpha}\rho_k,
-\]
-where $\rho_k$ are the eigenvalues of $X^{-1}Y$. The unwanted half-turn sum vanishes exactly when
-$D/2$ of the $\tau_k$ lie above the real axis and $D/2$ below (Fig.~\ref{fig:alpha}a). Changing
-$\alpha$ rotates all $\tau_k$ together, and the upper count $N(\alpha)$ changes only when some
-$\tau_k$ crosses the real axis, at $\alpha\equiv-\arg\rho_k\pmod\pi$. So the search for $\alpha$ is a
-scan: sort the crossing angles, read off the count on each interval between them, and take the
-midpoint of an interval with $N=D/2$ (Fig.~\ref{fig:alpha}b). Such an interval exists because a
-half-turn maps $N$ to $D-N$ and $N$ moves in unit steps. With this $\alpha$, $\sigma$ is
-antisymmetric on the path (Fig.~\ref{fig:alpha}c).
 
 \begin{figure}[H]
 \centering
 \begin{minipage}[b]{0.3\textwidth}\centering
 \includegraphics{figures/bal_alpha_tau}\\[2pt]
-{\small (a) directions of $\tau_k$}
+{\small (a) directions of $\tau_k$ at $\alpha^\ast$}
 \end{minipage}\hfill
 \begin{minipage}[b]{0.34\textwidth}\centering
 \includegraphics[width=\linewidth]{figures/bal_alpha_count}\\[2pt]
-{\small (b) upper-half-plane count}
+{\small (b) the count $N(\alpha)$}
 \end{minipage}\hfill
 \begin{minipage}[b]{0.34\textwidth}\centering
 \includegraphics[width=\linewidth]{figures/bal_alpha_sigma}\\[2pt]
-{\small (c) total phase}
+{\small (c) the total phase $\sigma(\beta)$}
 \end{minipage}
-\caption{Choosing $\alpha$. (a)~At the chosen $\alpha$, half of the directions $\tau_k/|\tau_k|$ lie
-above the real axis (blue) and half below (orange); grey rings show $\rho_k$ before rotation, and
-no $\tau_k$ may sit on the red axis. (b)~The count $N(\alpha)$ is a step function that jumps at
-the crossing angles (ticks); shaded intervals have $N=D/2$, and the code takes the midpoint of the
-widest one. (c)~With this $\alpha$, the continuous phase of $\det C$ satisfies
-$\sigma(\pi)=-\sigma(0)$ (Eq.~12).}
+\caption{Choosing $\alpha$. (a)~At $\alpha^\ast$, half of the directions $\tau_k/|\tau_k|$ lie above
+the real axis (blue) and half below (orange); grey rings are the $\rho_k$ before rotation. (b)~$N$
+from~\eqref{eq:N} jumps at the crossing angles (ticks); shaded intervals have $N=D/2$, and the
+black bar marks $\alpha^\ast$. (c)~With $\alpha=\alpha^\ast$, $\sigma$ from~\eqref{eq:sigma} satisfies
+$\sigma(\pi)=-\sigma(0)$.}
 \label{fig:alpha}
 \end{figure}
-
-\section*{4. Choosing $\beta$: bisecting the imbalance}
-
-With $\alpha$ fixed, list the eigenphases of $C(\beta)$ as real numbers
-$\nu_0\le\dots\le\nu_{D-1}\le\nu_0+2\pi$ with $\sum_j\nu_j=\sigma(\beta)$. These lifts vary
-continuously (Fig.~\ref{fig:beta}a), and at the ends the list is reversed and negated,
-$\nu_j(\pi)=-\nu_{D-1-j}(0)$ (Fig.~\ref{fig:beta}b). The middle half $S=\{2,3,4,5\}$ maps to itself
-under $j\mapsto D-1-j$, so the imbalance
-\[
-P(\beta)=\sum_{j\in S}\nu_j(\beta)-\sum_{j\notin S}\nu_j(\beta)
-\]
-satisfies $P(\pi)=-P(0)$ and has a root, which bisection finds (Fig.~\ref{fig:beta}c). Here
-$P(0)=\BalPzero$, $P(\pi)=\BalPpi$, and $\beta^\ast=\BalBetaStar$.
 
 \begin{figure}[H]
 \centering
 \begin{minipage}[b]{0.48\textwidth}\centering
 \includegraphics[width=\linewidth]{figures/bal_beta_lifts}\\[2pt]
-{\small (a) the sorted, lifted list along the path}
+{\small (a) the lifted list $\nu_j(\beta)$}
 \end{minipage}\hfill
 \begin{minipage}[b]{0.48\textwidth}\centering
 \includegraphics[width=\linewidth]{figures/bal_beta_imbalance}\\[2pt]
-{\small (c) bisection on $P$; numbered points are the first midpoints}
-\end{minipage}\\[14pt]
-\includegraphics{figures/bal_beta_lists}\\[2pt]
-{\small (b) the list at the two ends and at the root}
-\caption{Choosing $\beta$. (a)~The eight lifted eigenphases of $C(\beta)$; the middle half $S$ is
-blue. Each curve stays continuous because the lift is pinned to the total phase $\sigma(\beta)$.
-(b)~At $\beta=\pi$ the list is the mirror image of the list at $\beta=0$, with indices reversed,
-so blue stays blue and orange stays orange. At $\beta^\ast$ the blue and orange sums are equal.
-(c)~$P$ starts at $P(0)$ and ends at $-P(0)$; bisection homes in on $\beta^\ast$ in a few dozen
-evaluations, each one eigendecomposition.}
+{\small (b) the imbalance $P(\beta)$}
+\end{minipage}
+\caption{Choosing $\beta$. (a)~The lifted eigenphases~\eqref{eq:nu} along the path, continuous in
+$\beta$; the list at $\beta=\pi$ is the reversed negative of the list at $\beta=0$. (b)~The
+imbalance~\eqref{eq:P} changes sign between the endpoints; numbered points are the first Brent
+iterates, and the black bar marks $\beta^\ast$.}
 \label{fig:beta}
 \end{figure}
-
-\section*{5. The balanced split at $\beta^\ast$}
-
-At $\beta^\ast$ the four blue phases and the four orange phases have the same sum,
-$\BalSumMid$ and $\BalSumOut$. Placing the blue phases on the half
-$j_{n-2}=0$ ($+1$ entries of $\mathbf h$) and the orange phases on $j_{n-2}=1$, with
-$\theta_j=\nu_j(\beta^\ast)$ and no further branch shift, gives $\varphi=0$
-(Fig.~\ref{fig:result}). The pivot $g=R_z(\alpha)R_y(\beta^\ast)$ therefore lets the left-side
-multiplexor merge its last two CX gates into the central factor.
 
 \begin{figure}[H]
 \centering
 \includegraphics{figures/bal_split}
-\caption{The balanced split at $\beta^\ast$. The middle half (blue) is placed on the $+1$ entries
-of $\mathbf h$ and the outer quarters (orange) on the $-1$ entries. The two groups have equal
-sums, so $\varphi=\frac1D\mathbf h^{\mathsf T}\boldsymbol\theta=0$ and $R_z(\varphi)$ drops out.}
+\caption{The balanced split at $\beta^\ast$. The middle half (blue) is placed on the $+1$ entries of
+$\mathbf h$ and the outer quarters (orange) on the $-1$ entries. The two groups have equal sums,
+so $\varphi=0$ in~\eqref{eq:phi} and the last two CX gates merge.}
 \label{fig:result}
 \end{figure}
 

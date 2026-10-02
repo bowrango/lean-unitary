@@ -3,9 +3,9 @@
 Choose alpha so exactly half the eigenvalues of exp(i alpha) X^-1 Y are in
 each half-plane. Ordered eigenphase lifts of C then reverse and negate between
 beta = 0 and pi. Their middle half defines a continuous imbalance with opposite
-endpoint signs, so scalar bisection finds a balanced split. Each trial uses one
-SVD and one eigensolve on D-by-D matrices, plus O(D log D) phase sorting; no
-combinatorial subset list is formed.
+endpoint signs, so Brent's method finds a balanced split. Each trial uses one
+SVD and one Hermitian eigensolve on D-by-D matrices, plus O(D log D) phase
+sorting; no combinatorial subset list is formed.
 
 The numerical search handles generic, nonsingular paths. Simple balanced
 inputs and quarter-turns are accepted directly. Other exceptional or unresolved
@@ -18,6 +18,8 @@ Usage: python3 foldzxz_opt.py [n ...]   (default: n = 3 4)
 import sys
 
 import numpy as np
+import scipy.linalg as sl
+from scipy.optimize import brentq
 
 from core import (H, Z, block_diag, block_zxz, circuit_matrix, cnot_count,
                   demultiplex, embed, mux_rot, random_unitary)
@@ -26,9 +28,11 @@ from foldzxz import cnot_formula, zxz_formula
 from zxz import leaf
 
 
-ROOT_TOL = 2e-13       # balanced-split phase residual targeted by bisection
-TOL = 1e-7            # maximum accepted balanced-split phase residual
-N_BISECT = 60
+TOL = 1e-7             # maximum accepted balanced-split phase residual
+ROOT_TOL = 2e-13       # residual accepted at an endpoint without searching
+UNIT_TOL = 1e-8        # maximum ||lambda| - 1| for eigenvalues of the unitary C
+CLUSTER_TOL = 1e-8     # Hermitian eigenvalues closer than this are re-solved together
+GAMMA = (5 ** 0.5 - 1) / 2   # generic mixing weight for the Hermitian pencil
 
 
 def wrap(x):
@@ -58,18 +62,47 @@ def cyclic_split(mu):
     return order[start:start + half], float(residuals[start])
 
 
+def unitary_phases(C):
+    """Eigenphases of a unitary C from a Hermitian eigensolve.
+
+    C is normal, so it shares eigenvectors with the Hermitian matrix
+    G = (C + C^dagger)/2 + gamma (C - C^dagger)/(2i), whose eigenvalue for the
+    eigenphase mu is cos(mu) + gamma sin(mu). The eigenvalues of C are the
+    Rayleigh quotients v^dagger C v. Two eigenphases can map to nearly the same
+    eigenvalue of G; such clusters are re-solved with a small dense eigensolve.
+    """
+    Ch = C.conj().T
+    w, V = sl.eigh((C + Ch) / 2 + GAMMA * (C - Ch) / 2j, driver="evd")
+    lam = np.einsum("ij,ij->j", V.conj(), C @ V)
+    i, D = 0, len(w)
+    while i < D - 1:
+        j = i
+        while j < D - 1 and w[j + 1] - w[j] < CLUSTER_TOL:
+            j += 1
+        if j > i:
+            block = V[:, i:j + 1]
+            lam[i:j + 1] = np.linalg.eigvals(block.conj().T @ C @ block)
+        i = j + 1
+    if np.max(np.abs(np.abs(lam) - 1)) > UNIT_TOL:
+        raise RuntimeError("Eigenvalues of the unitary C are not unimodular; the eigensolver "
+                           "is unreliable")
+    return np.angle(lam)
+
+
 def ordered_phases(mu, phase):
     """Lift sorted principal eigenphases to a span <= 2*pi and total phase.
 
     Raising the smallest phase by 2*pi moves it to the end and adds one turn
     to the total. Quotient/remainder implements any number of these cyclic
-    shifts at once. The analytic total fixes the lift at each beta independently.
+    shifts at once. The analytic total is used only to choose the number of
+    turns, so it may be off by anything less than pi; the lifted sum itself
+    comes from the eigenphases.
     """
     phases = np.sort(mu)
     total = phases.sum()
-    if abs(wrap(total - phase)) > TOL:
-        raise RuntimeError("Determinant phase is numerically inconsistent; pivot path "
-                           "is too ill-conditioned")
+    if abs(wrap(total - phase)) > np.pi / 2:
+        raise RuntimeError("Determinant phase disagrees with the eigenphases; the 2*pi branch "
+                           "is ambiguous")
     turns = round((phase - total) / (2 * np.pi))
     whole, shift = divmod(turns, len(phases))
     return np.r_[phases[shift:], phases[:shift] + 2 * np.pi] + 2 * np.pi * whole
@@ -133,8 +166,7 @@ class PivotPath:
 
     def state(self, beta):
         """Return the middle-half imbalance and its (unwrapped) split residual."""
-        mu = np.angle(np.linalg.eigvals(self.C(beta)))
-        theta = ordered_phases(mu, self.determinant_phase(beta))
+        theta = ordered_phases(unitary_phases(self.C(beta)), self.determinant_phase(beta))
         quarter = self.D // 4
         # Pairwise summation avoids subtracting two large total phase sums.
         middle = theta[quarter:3 * quarter]
@@ -143,33 +175,26 @@ class PivotPath:
         return imbalance, 2 * abs(imbalance)
 
     def find_beta(self):
-        """Bisect the imbalance of one fixed split; no subset enumeration is needed."""
-        lo, hi = 0.0, np.pi
-        value_lo, residual_lo = self.state(lo)
+        """Root of the imbalance of one fixed split by Brent's method on [0, pi].
+
+        The imbalance is continuous with opposite signs at the endpoints, so the bracket
+        is valid; Brent's method keeps it while converging superlinearly.
+        """
+        value_lo, residual_lo = self.state(0.0)
         if residual_lo <= ROOT_TOL:
-            return lo
-        value_hi, residual_hi = self.state(hi)
+            return 0.0
+        value_hi, residual_hi = self.state(np.pi)
         if residual_hi <= ROOT_TOL:
-            return hi
+            return np.pi
         if np.signbit(value_lo) == np.signbit(value_hi):
             raise RuntimeError("Pivot endpoints do not have opposite imbalances; numerical "
                                "conditioning prevents a reliable bracket")
-        best = min((residual_lo, lo), (residual_hi, hi))
-        for _ in range(N_BISECT):
-            mid = (lo + hi) / 2
-            if mid == lo or mid == hi:
-                break
-            value_mid, residual = self.state(mid)
-            best = min(best, (residual, mid))
-            if residual <= ROOT_TOL:
-                return mid
-            if np.signbit(value_mid) == np.signbit(value_lo):
-                lo = mid
-            else:
-                hi = mid
-        if best[0] > TOL:
-            raise RuntimeError(f"Bisection did not resolve a balanced split ({best[0]:.2e})")
-        return best[1]
+        beta = brentq(lambda b: self.state(b)[0], 0.0, np.pi,
+                      xtol=1e-15, rtol=4 * np.finfo(float).eps, maxiter=200)
+        residual = self.state(beta)[1]
+        if residual > TOL:
+            raise RuntimeError(f"Root search did not resolve a balanced split ({residual:.2e})")
+        return beta
 
 
 def _direct_C(X, Y):
@@ -186,7 +211,7 @@ def find_pivot(U, n):
         raise ValueError("A pivot requires a 2**n square unitary with n >= 3")
     X, Y = U[:D, :D], U[:D, D:]
     C0 = _direct_C(X, Y)
-    if cyclic_split(np.angle(np.linalg.eigvals(C0)))[1] <= ROOT_TOL:
+    if cyclic_split(unitary_phases(C0))[1] <= ROOT_TOL:
         return 0.0, 0.0
     try:
         path = PivotPath(U, n)
@@ -194,7 +219,7 @@ def find_pivot(U, n):
         # For example, Y = 0 makes X^-1 Y unusable, but a quarter-turn gives C = i I.
         c, s = np.cos(np.pi / 4), np.sin(np.pi / 4)
         Cmid = _direct_C(c * X + s * Y, -s * X + c * Y)
-        if cyclic_split(np.angle(np.linalg.eigvals(Cmid)))[1] <= ROOT_TOL:
+        if cyclic_split(unitary_phases(Cmid))[1] <= ROOT_TOL:
             return 0.0, np.pi / 2
         raise
     return path.alpha, path.find_beta()
@@ -244,9 +269,7 @@ def synth(U, n, want_diag=False):
     if n == 2:
         return leaf(U, want_diag)
     top = n - 1
-    print("start")
     alpha, beta = find_pivot(U, n)
-    print("stop")
     u = top_gate(alpha, beta)
     A1, A2, B, C = block_zxz(apply_pivot(U, u))
 

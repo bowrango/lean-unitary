@@ -1,9 +1,8 @@
 r"""Generate every figure of ../supplementary.tex (balanced-split pivot, paper Sec. II.A-II.C).
 
 Runs the construction of foldzxz_opt.py on one Haar-random four-qubit target (D = 8), samples the
-quantities each figure shows, and writes one PDF per figure to ../figures/ at its printed size,
-plus bal_values.tex with the numbers quoted in the text. Needs numpy, scipy and matplotlib, and a
-LaTeX installation for text rendering.
+quantities each figure shows, and writes one PDF per figure to ../figures/ at its printed size.
+Needs numpy, scipy and matplotlib, and a LaTeX installation for text rendering.
 
 Usage (from this directory): python3 balanced_figs.py, then compile ../supplementary.tex.
 """
@@ -16,11 +15,10 @@ import numpy as np
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
 from core import random_unitary
-from foldzxz_opt import PivotPath, ordered_phases
+from foldzxz_opt import PivotPath, ordered_phases, unitary_phases
 
 FIG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'figures')
 N_QUBITS, SEED = 4, 2                 # D = 2^(n-1) = 8 eigenphases
-N_BISECT_SHOWN = 7                    # bisection midpoints marked in the P(beta) plot
 
 
 def unit(z):
@@ -41,7 +39,7 @@ def collect(n=N_QUBITS, seed=SEED):
 
     def lift(beta):
         """Sorted eigenphase lifts nu_j(beta), pinned to the total phase sigma(beta)."""
-        mu = np.angle(np.linalg.eigvals(path.C(beta)))
+        mu = unitary_phases(path.C(beta))
         return ordered_phases(mu, path.determinant_phase(beta))
 
     def imbalance(beta):
@@ -62,23 +60,17 @@ def collect(n=N_QUBITS, seed=SEED):
     d['nu'] = [[(float(b), float(L[i, j])) for i, b in enumerate(B)] for j in range(D)]
     d['P'] = [(float(b), float(imbalance(b))) for b in B]
 
-    lo, hi, p_lo, mids = 0.0, np.pi, imbalance(0.0), []
-    for k in range(N_BISECT_SHOWN):
-        mid = (lo + hi) / 2
-        p_mid = imbalance(mid)
-        mids.append((k + 1, mid, p_mid))
-        if np.sign(p_mid) == np.sign(p_lo):
-            lo, p_lo = mid, p_mid
-        else:
-            hi = mid
-    d['mids'] = mids
-
+    # record the trials of the code's own root search (Brent's method)
+    trials, state = [], path.state
+    path.state = lambda beta: trials.append(beta) or state(beta)
     bstar = path.find_beta()
+    path.state = state
+    inner = [b for b in trials[:-1] if 0 < b < np.pi]   # interior trials, before the final check
+    d['iterates'] = [(k + 1, b, imbalance(b)) for k, b in enumerate(inner)]
     d['bstar'] = bstar
-    d['nu0'], d['nupi'], d['nustar'] = (lift(b).tolist() for b in (0.0, np.pi, bstar))
-    d['C0'] = np.angle(np.linalg.eigvals(path.C(0.0))).tolist()
-    d['Cpi'] = np.angle(np.linalg.eigvals(path.C(np.pi))).tolist()
-    d['P0'], d['Ppi'] = imbalance(0.0), imbalance(np.pi)
+    d['nustar'] = lift(bstar).tolist()
+    d['C0'] = unitary_phases(path.C(0.0)).tolist()
+    d['Cpi'] = unitary_phases(path.C(np.pi)).tolist()
     nu = np.array(d['nustar'])
     d['halfsums'] = (nu[S].sum(), np.delete(nu, S).sum())
     return d
@@ -188,8 +180,8 @@ def fig_alpha_count(d, D):
     ax.axhline(D // 2, color=MID, ls="--", lw=0.8)
     for c in d['cross']:
         ax.plot([c, c], [0, 0.35], color="0.45", lw=0.6)
-    ax.axvline(d['alpha'], color=RED, lw=1.0)
-    ax.text(d['alpha'] + 0.08, D - 1.1, r"$\alpha$", color=RED, fontsize=8)
+    ax.axvline(d['alpha'], color="k", lw=1.4)
+    ax.text(d['alpha'], D + 0.15, r"$\alpha^\ast$", ha="center", va="bottom", fontsize=8)
     ax.set_xlim(0, 2 * np.pi)
     ax.set_ylim(0, D)
     ax.set_xticks([0, np.pi, 2 * np.pi], [r"$0$", r"$\pi$", r"$2\pi$"])
@@ -216,7 +208,7 @@ def fig_beta_lifts(d, S):
     for j, curve in enumerate(d['nu']):
         b, v = unpack(curve)
         ax.plot(b, v, color=MID if j in S else OUT)
-    ax.axvline(d['bstar'], color="0.4", ls="--", lw=0.8)
+    ax.axvline(d['bstar'], color="k", lw=1.4)
     ax.text(d['bstar'], 3.5, r"$\beta^\ast$", ha="center", va="bottom", fontsize=8)
     ax.set_ylim(-3.4, 3.4)
     beta_axis(ax, r"lifted eigenphases $\nu_j(\beta)$")
@@ -229,34 +221,13 @@ def fig_beta_imbalance(d, shown=6):
     b, p = unpack(d['P'])
     ax.axhline(0, color="0.7", ls=":", lw=0.8)
     ax.plot(b, p, color="k")
-    for k, m, v in d['mids'][:shown]:
+    for k, m, v in d['iterates'][:shown]:
         ax.plot(m, v, "o", color="k", ms=3)
         ax.annotate(str(k), (m, v), textcoords="offset points", xytext=(-4, 4), fontsize=7)
-    ax.plot(d['bstar'], 0, "o", color=MID, ms=5)
-    ax.annotate(r"$\beta^\ast$", (d['bstar'], 0), textcoords="offset points", xytext=(4, -10),
-                color=MID, fontsize=8)
+    ax.axvline(d['bstar'], color="k", lw=1.4)
     beta_axis(ax, r"imbalance $P(\beta)$")
+    ax.text(d['bstar'], ax.get_ylim()[1], r"$\beta^\ast$", ha="center", va="bottom", fontsize=8)
     fig.tight_layout(pad=0.2)
-    return fig
-
-
-def fig_beta_lists(d, S):
-    fig, ax = plt.subplots(figsize=(5.6, 1.55))
-    rows = [(d['nu0'], 2.0, r"$\beta=0$"), (d['nustar'], 1.0, r"$\beta=\beta^\ast$"),
-            (d['nupi'], 0.0, r"$\beta=\pi$")]
-    for vals, y, label in rows:
-        ax.plot([-3.4, 3.4], [y, y], color="0.55", lw=0.7)
-        ax.text(-3.55, y, label, ha="right", va="center", fontsize=8.5)
-        for j, v in enumerate(vals):
-            ax.plot(v, y, "o", color=MID if j in S else OUT, ms=4.5)
-            dy = 0.2 if j % 2 == 0 else -0.33
-            ax.text(v, y + dy, rf"$\nu_{j}$", ha="center", fontsize=6.5)
-    for v, l in zip([-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
-                    [r"$-\pi$", r"$-\pi/2$", r"$0$", r"$\pi/2$", r"$\pi$"]):
-        ax.text(v, -0.6, l, ha="center", fontsize=7, color="0.4")
-    ax.set_xlim(-4.6, 3.6)
-    ax.set_ylim(-0.75, 2.4)
-    ax.axis("off")
     return fig
 
 
@@ -285,17 +256,6 @@ def fig_split(d, S, D):
     return fig
 
 
-def values(d):
-    """Numbers quoted in the text, as macros."""
-    return "\n".join([
-        rf"\newcommand{{\BalPzero}}{{{d['P0']:.3f}}}",
-        rf"\newcommand{{\BalPpi}}{{{d['Ppi']:.3f}}}",
-        rf"\newcommand{{\BalBetaStar}}{{{d['bstar']:.4f}}}",
-        rf"\newcommand{{\BalSumMid}}{{{d['halfsums'][0]:.5f}}}",
-        rf"\newcommand{{\BalSumOut}}{{{d['halfsums'][1]:.5f}}}",
-    ])
-
-
 def main():
     d = collect()
     D = 2 ** (N_QUBITS - 1)
@@ -308,16 +268,13 @@ def main():
         'bal_alpha_sigma': fig_alpha_sigma(d),
         'bal_beta_lifts': fig_beta_lifts(d, S),
         'bal_beta_imbalance': fig_beta_imbalance(d),
-        'bal_beta_lists': fig_beta_lists(d, S),
         'bal_split': fig_split(d, S, D),
     }
     os.makedirs(FIG_DIR, exist_ok=True)
     for name, fig in figures.items():
         fig.savefig(os.path.join(FIG_DIR, name + '.pdf'), bbox_inches="tight", pad_inches=0.02)
         plt.close(fig)
-    with open(os.path.join(FIG_DIR, 'bal_values.tex'), 'w') as f:
-        f.write("% generated by stage2/balanced_figs.py -- do not edit\n" + values(d) + "%\n")
-    print(f"wrote {len(figures)} figures and bal_values.tex to {os.path.normpath(FIG_DIR)}")
+    print(f"wrote {len(figures)} figures to {os.path.normpath(FIG_DIR)}")
 
 
 if __name__ == "__main__":

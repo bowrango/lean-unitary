@@ -74,6 +74,7 @@ significant bit, circuits applied first to last, the same `Ry`/`Rz`).
 | `rr_solutions.py`, `rr_count_solutions.py`, `seq_solcount.py` | distinct solutions per target and their signed count (section 9) |
 | `rr_degree.py` | local degree of the node map at a solution, modulo the gauge torus (section 9) |
 | `foldzxz.py` | **block-ZXZ with the extra C-side fold at every node: 18 / 90 / 402 CNOTs at n = 3 / 4 / 5 (section 10)** |
+| `balanced_figs.py` | writes every figure of `../supplementary.tex` (balanced-split pivot, paper Sec. II.A–II.C) as PDFs in `../figures/`, via `foldzxz_opt.py`; needs matplotlib and LaTeX |
 | `fold_ivt.py`, `pfaff.py`, `pfaff_general.py` | parity rule, Pfaffian sign change and IVT root for the fold condition |
 | `dfold.py`, `dfold_synth.py` | both folds by numerical root-finding: verified 17-CNOT 3-qubit circuits |
 | `skel3.py` | universality of the 3-qubit block-ZXZ skeleton with one CNOT deleted |

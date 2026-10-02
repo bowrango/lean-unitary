@@ -99,7 +99,7 @@ Theoretical lower bound & 0 & 3 & 14 & 61 & 252 & 1020 & $(1/4)\cdot(4^n-3n-1)$\
 \section{An improved algorithm}\label{sec:alg}
 
 Sec.~\ref{sec:fold} motivates the pivot gate, Sec.~\ref{sec:cond} states when the merge is possible,  
-Sec.~\ref{sec:exist} shows how the compute the parameters, and finally Sec.~\ref{sec:count} derives the main CX count result. 
+Sec.~\ref{sec:exist} shows how to compute the parameters, and finally Sec.~\ref{sec:count} derives the main CX count result. 
 
 \begin{figure}[t]
 \centering
@@ -126,46 +126,50 @@ uses the same number of CX gates after merging, but now the left-side multiplexo
 
 \subsection{Merging an additional CX into the central multiplexor}\label{sec:fold}
 
-A generic multiplexed gate has a block-diagonal form $U_1\oplus U_2$ with the well-known decomposition \cite{mottonen}:
+A generic multiplexed gate has a block-diagonal form $U_1\oplus U_2$ with the well-known decomposition~\cite{smb}:
 \begin{equation}\label{eq:demux}
 U_1\oplus U_2=(I\otimes V)\,\Delta(\boldsymbol\theta)\,(I\otimes W),\qquad
 U_1U_2^\dagger=V\operatorname{diag}(e^{-i\theta_j})V^\dagger ,
 \end{equation}
-where the diagonal matrix $\Delta(\boldsymbol\theta)$ is a multiplexed rotation, $\boldsymbol\theta$ are the eigenphases of $U_1U_2^\dagger$, and $V$,$W$ are unitary matrices. This multiplexed rotation is depicted in (Fig.~\ref{fig:fold}a), where the single-qubit rotation angles computed with
+where the diagonal matrix $\Delta(\boldsymbol\theta)$ is a multiplexed rotation, $\boldsymbol\theta$ are the eigenphases of $U_2U_1^\dagger$, and $V$, $W$ are unitary matrices. Here $j=(j_{n-2}\cdots j_0)_2\in\{0,\dots,D-1\}$, with $D=2^{n-1}$, labels the control basis states in binary, with bit $j_i$ the state of $q_i$. This multiplexed rotation is depicted in Fig.~\ref{fig:fold}a, where the single-qubit rotation angles are computed by~\cite{mottonen}
 \begin{equation}\label{eq:walsh}
 \boldsymbol\varphi=\frac1D H_D\,\boldsymbol\theta,
 \end{equation}
-where $H_D$ is the $D\times D$ Walsh--Hadamard matrix following the conventional Grey code order. As shown in (Fig.~\ref{fig:fold}b), our improvement comes from removing the final angle,
+where $H_D$ is the $D\times D$ Walsh--Hadamard matrix with rows in Gray-code order. As shown in Fig.~\ref{fig:fold}b, our improvement comes from removing the final angle,
 \begin{equation}\label{eq:phi}
 \varphi=\frac1D\,\mathbf h^{\mathsf T}\boldsymbol\theta,
 \end{equation}
-where $\mathbf h$ is the column of $H_D$ corresponding to the top control qubit, i.e., $h_j=(-1)^{j_{n-2}}$ in Grey code order. This requires that the eigenphases $\boldsymbol\theta$ be balanced with $\mathbf h$ such that $\varphi=0$. To achieve this, we define the gate $g=R_z(\alpha)R_y(\beta)$ and write the full decomposition as
+where $\mathbf h$ is the row of $H_D$ corresponding to the top control qubit $q_{n-2}$, i.e., $h_j=(-1)^{j_{n-2}}$. 
+For example, Fig.~\ref{fig:fold} has $n=3$ so $j=(j_1j_0)_2$ runs over $\lvert q_1q_0\rangle=\lvert00\rangle,\lvert01\rangle,\lvert10\rangle,\lvert11\rangle$, so $\mathbf h=(1,1,-1,-1)$. Removing the final rotation with $\varphi=0$ requires the eigenphases $\boldsymbol\theta$ be balanced with $\mathbf h$. To achieve this, we define the gate $g=R_z(\alpha)R_y(\beta)$ and write the full decomposition as
 \begin{equation}\label{eq:zxz}
 U=(\ast)\,\big(I\oplus C(g)\big)\,(g^\dagger\otimes I),
 \end{equation}
 where $I\oplus C(g)$ is the left-side multiplexor and $(\ast)$ collects the remaining right-side
-gates. We call $g$ a $\textit{pivot}$ because it rotates the eigenspectrum of $C$ to satisfy $\varphi=0$.
-
-By ~\eqref{eq:demux}, this modified left-side multiplexor can be decomposed as
+gates. We call $g$ a $\textit{pivot}$ because it rotates the eigenspectrum of $C$ to satisfy $\varphi=0$. By~\eqref{eq:demux}, this modified left-side multiplexor can be decomposed as
 \begin{equation}\label{eq:democ}
 C(g)=V\operatorname{diag}\big(e^{i\theta_0},\dots,e^{i\theta_{D-1}}\big)V^\dagger ,
 \end{equation}
 
-TODO clarify the permulation freedom.
-We note that these eigenphases $\theta_k=\mu_k+2\pi m_k$ with
-$m_k\in\mathbb Z$ (a $2\pi$ shift flips the sign of one eigenvector).
+This decomposition is not unique. A common permutation of the eigenvalues and the columns of $V$
+leaves~\eqref{eq:democ} unchanged, and each angle is fixed only modulo $2\pi$, since a $2\pi$ shift
+flips the sign of one eigenvector, which $V$ and $W$ absorb. Simply rewriting $\mu_0,\dots,\mu_{D-1}$ for the
+eigenphases of $C(g)$, we have
+\begin{equation}\label{eq:branch}
+\theta_j=\mu_{k(j)}+2\pi m_j,\qquad m_j\in\mathbb Z,
+\end{equation}
+for any assignment $j\mapsto k(j)$ of eigenphases to basis states.
 
 \subsection{When is the additional merge possible?}\label{sec:cond}
 
-By~\eqref{eq:phi}, $\varphi$ depends only on how the eigenphases of $C$ are assigned to the $+1$
-and $-1$ entries of $\mathbf h$. Since a common permutation of the eigenvalues and the columns of
-$V_c$ leaves~\eqref{eq:democ} unchanged, we may choose which $D/2$ eigenphases occupy the $+1$
-positions. Let $S$, with $|S|=D/2$, denote this subset. Then
+By~\eqref{eq:phi}, $\varphi$ depends only on how the eigenphases are assigned to the $+1$
+and $-1$ entries of $\mathbf h$, and by~\eqref{eq:branch} we may choose this assignment. Let $S$,
+with $|S|=D/2$, be the set of eigenphases placed on the $+1$ entries. Then
 \begin{equation}\label{eq:phiS}
 \varphi=\frac1D\Big(\sum_{k\in S}\mu_k-\sum_{k\notin S}\mu_k\Big)+\frac{2\pi\ell}{D},\qquad
 \ell\in\mathbb Z,
 \end{equation}
-where the integer $\ell$ is set by the branches $m_k$ and can take any value. Hence $\varphi$ can
+where $\ell=\sum_{h_j=+1}m_j-\sum_{h_j=-1}m_j$ is set by the branches and can take any integer
+value. Hence $\varphi$ can
 be set to zero iff
 \begin{equation}\label{eq:split}
 \sum_{k\in S}\mu_k-\sum_{k\notin S}\mu_k=-2\pi\ell\qquad\text{for some }\ell\in\mathbb Z .
@@ -173,82 +177,88 @@ be set to zero iff
 We call such an $S$ a \emph{balanced split}. For a fixed $C$ this is nongeneric: the left side of~\eqref{eq:split}
 varies continuously with $C$, while the right side is discrete. The pivot, however, gives a
 continuous one-parameter family $C(\beta)$, so~\eqref{eq:split} becomes a scalar root condition
-in $\beta$, and Sec.~\ref{sec:exist} shows that varying $\beta$ always produces a root.
-
+in $\beta$.
 \subsection{Choosing the pivot gate}\label{sec:exist}
 
-A direct search for a balanced split would test all $\tfrac12\binom{D}{D/2}$ splits. Instead, we
-fix one split in advance and choose the pivot so that this split balances, finding each angle by a
-one-dimensional search. The idea is that as $\beta$ runs from $0$ to $\pi$, the pivot carries $C$
-to $C^{-1}$, which negates every eigenphase. Negating an increasing list reverses it, and reversal
-maps the middle half of the list to itself, so the imbalance between the middle half and the
-outer quarters changes sign and must vanish somewhere. The paragraphs below make this precise.
-\emph{The path} establishes the inversion. Because eigenphases are defined only modulo $2\pi$, the
-list needs consistent branches along the path; \emph{choosing $\alpha$} provides them by making the
-total phase change sign too, which reduces to a counting condition solved by sorting $D$ angles.
-\emph{Choosing $\beta$} then locates the zero of the imbalance by bisection. Both steps are
-intermediate-value arguments, one discrete and one continuous, so no subset is ever enumerated.
+We denote by $\alpha^{*}$ and $\beta^{*}$ the pivot angles that produce a balanced split. The angle
+$\beta$ moves $C$ from $C(0)$ to $C(0)^{-1}$, while $\alpha$ is chosen so that an ordered
+eigenphase list reverses and changes sign between these endpoints.
 
 \paragraph{The path $C(\beta)$.} Write $U=\begin{psmallmatrix}X&Y\\ \ast&\ast\end{psmallmatrix}$
-in $D\times D$ blocks, where $D=2^{n-1}$ is divisible by four, and assume $X$ and $Y$ are
+in $D\times D$ blocks, where $D=2^{n-1}$ is divisible by four for $n\ge3$, and assume $X$ and $Y$ are
 invertible, which holds for generic $U$. With $c=\cos(\beta/2)$ and $s=\sin(\beta/2)$, the pivot
 $g$ gives $U(g\otimes I)$ the top-row blocks
 \begin{equation}\label{eq:path}
 X_g=e^{-i\alpha/2}c\,X+e^{i\alpha/2}s\,Y,\qquad
 Y_g=-e^{-i\alpha/2}s\,X+e^{i\alpha/2}c\,Y .
 \end{equation}
-For fixed $\alpha$, the multiplexor matrix of~\eqref{eq:zxz} is
+At the endpoints the blocks swap with a sign change: $(X_g,Y_g)$ is
+$(e^{-i\alpha/2}X,\,e^{i\alpha/2}Y)$ at $\beta=0$ and $(e^{i\alpha/2}Y,\,-e^{-i\alpha/2}X)$ at
+$\beta=\pi$.
+For fixed $\alpha$, the Block-ZXZ factorization~\cite[Sec.~4.1]{zxz} gives the
+multiplexor matrix of~\eqref{eq:zxz} in terms of these pivoted blocks:
 \begin{equation}\label{eq:Cdef}
-C(\beta)=-i\,X_g^\dagger\,(X_gX_g^\dagger)^{-1/2}(Y_gY_g^\dagger)^{-1/2}\,Y_g .
+C(\beta)=-i\,X_g^\dagger\,(X_gX_g^\dagger)^{-1/2}(Y_gY_g^\dagger)^{-1/2}\,Y_g,
 \end{equation}
-At $\beta=0$ and $\beta=\pi$, \eqref{eq:path} gives $(X_g,Y_g)=(e^{-i\alpha/2}X,\,e^{i\alpha/2}Y)$
-and $(e^{i\alpha/2}Y,\,-e^{-i\alpha/2}X)$, and~\eqref{eq:Cdef} gives
+where the inverse square roots are positive definite. The endpoint relation is
 \begin{equation}\label{eq:inv}
 C(\pi)=C(0)^\dagger=C(0)^{-1}.
 \end{equation}
+Thus the endpoint eigenphases are negatives of the starting ones, modulo $2\pi$ and up to
+permutation. We will use this symmetry to construct a continuous real phase imbalance with
+opposite endpoint values, forcing a zero at some $\beta^\ast\in[0,\pi]$.
 
-\paragraph{Choosing $\alpha$.} Comparing the ordered lists at the two ends requires their sum,
-the phase of $\det C$, to change sign as well. By~\eqref{eq:Cdef}, $\det C$ has the phase of
-$\det Y_g/\det X_g$, since the inverse square roots have positive determinants and $(-i)^D=1$.
-With $\tau_k=e^{i\alpha}\rho_k$, where $\rho_k$ are the eigenvalues of $X^{-1}Y$, and up to
-constant phases,
+\paragraph{Choosing $\alpha$.} In~\eqref{eq:Cdef} the inverse square roots have positive
+determinants and $(-i)^D=1$, so $\det C$ has the phase of $\det Y_g/\det X_g$. With $\tau_k$ the
+eigenvalues of $e^{i\alpha}X^{-1}Y$, \eqref{eq:path} gives
 \begin{equation}\label{eq:dets}
-\det X_g\propto\det X\prod_k(c+s\tau_k),\qquad
-\det Y_g\propto\det Y\prod_k(c-s/\tau_k).
+\frac{\det Y_g}{\det X_g}=\prod_k\left(\tau_k\,\frac{c-s/\tau_k}{c+s\tau_k}\right).
 \end{equation}
-If no $\tau_k$ is real, $X_g$ and $Y_g$ stay invertible and $C(\beta)$ is continuous. Each factor
-moves from $1$ within the half-plane of $\tau_k$, so with $t_k=\arg\tau_k\in(-\pi,\pi)$ their
-phases change by $t_k$ and $\operatorname{sgn}(t_k)\pi-t_k$, and the phase of $\det C$ changes by
-$\sum_k\operatorname{sgn}(t_k)\pi-2\sum_k t_k$. The first sum cancels when exactly $D/2$ of the
-$\tau_k$ lie in each open half-plane. Such an $\alpha$ exists, since rotating by $\pi$ turns an
-upper-half-plane count $N$ into $D-N$ and the count changes by one at each crossing of the real
-axis. To find it, note that $\tau_k$ is real exactly when $\alpha\equiv-\arg\rho_k\pmod\pi$; these
-crossing angles split $[0,2\pi)$ into intervals of constant count, and we take the midpoint of an
-interval with count $D/2$. The continuous phase $\sigma(\beta)$ of $\det C$, with
-$\sigma(0)=\sum_k t_k$, then satisfies
+As $\beta$ runs from $0$ to $\pi$, the factor $c+s\tau_k$ moves from $1$ to $\tau_k$ and $c-s/\tau_k$
+from $1$ to $-1/\tau_k$. For nonreal $\tau_k$ and $\beta>0$, both lie in the open half-plane
+containing $\tau_k$ and cannot vanish. Thus choosing $\alpha$ with no real $\tau_k$ keeps
+$X_g$, $Y_g$ invertible and $C(\beta)$ continuous. Writing $t_k=\arg\tau_k$, the two factors accumulate phases $t_k$ and
+$\operatorname{sgn}(t_k)\pi-t_k$, respectively. Subtracting the denominator phase from the
+numerator phase gives the total change in the continuous phase of $\det C$:
+\begin{equation}\label{eq:dphase}
+\pi\,(N_+-N_-)-2\sum_k\arg\tau_k ,\qquad \arg\tau_k\in(-\pi,\pi),
+\end{equation}
+where $N_\pm$ count the $\tau_k$ in the upper and lower half-planes. Choosing $\alpha^\ast$ with
+$N_+=N_-=D/2$ removes the half-turn term. Varying $\alpha$ rotates all $\tau_k$
+together. With distinct crossing angles, $N_+$ changes by one at each real-axis crossing; a
+rotation by $\pi$ replaces $N_+$ by $D-N_+$. The count therefore reaches $D/2$ on an interval
+between crossings, and we choose $\alpha^\ast$ in its interior.
+
+\paragraph{Choosing $\beta$.} With $\alpha=\alpha^\ast$, let $\sigma(\beta)$ be the continuous phase
+of $\det C(\beta)$ with $\sigma(0)=\sum_k\arg\tau_k$. By~\eqref{eq:dphase},
 \begin{equation}\label{eq:sigma}
 \sigma(\pi)=-\sigma(0).
 \end{equation}
-
-\paragraph{Choosing $\beta$.} List the eigenphases of $C(\beta)$ as real numbers
-\[
+Choose real representatives of the eigenphases of $C(\beta)$, ordered by rank $k$:
+\begin{equation}\label{eq:nu}
 \nu_0(\beta)\le\cdots\le\nu_{D-1}(\beta)\le\nu_0(\beta)+2\pi,\qquad
-\sum_j\nu_j(\beta)=\sigma(\beta).
-\]
-This fixes the list, since a cyclic shift changes the sum by $2\pi$, and makes it continuous in
-$\beta$. Because negation reverses an increasing list, \eqref{eq:inv} and~\eqref{eq:sigma} give
-$\nu_j(\pi)=-\nu_{D-1-j}(0)$. The middle half $S=\{D/4,\dots,3D/4-1\}$ is invariant under
-$j\mapsto D-1-j$, so the imbalance
+\sum_k\nu_k(\beta)=\sigma(\beta).
+\end{equation}
+The interval condition fixes the ordered list up to cyclic reordering with $2\pi$ branch
+shifts. Moving the smallest phase to the end after adding $2\pi$ increases the sum by $2\pi$,
+so the sum condition selects a unique list. This choice varies continuously with $\beta$,
+including when a phase crosses the argument cut. Negating an increasing list reverses its
+order, so~\eqref{eq:inv} and~\eqref{eq:sigma} give $\nu_k(\pi)=-\nu_{D-1-k}(0)$. The middle
+half $S=\{D/4,\dots,3D/4-1\}$ of the ranks is invariant under $k\mapsto D-1-k$, so the imbalance
 \begin{equation}\label{eq:P}
-P(\beta)=\sum_{j\in S}\nu_j(\beta)-\sum_{j\notin S}\nu_j(\beta)
+P(\beta)=\sum_{k\in S}\nu_k(\beta)-\sum_{k\notin S}\nu_k(\beta)
 \end{equation}
 satisfies
 \begin{equation}\label{eq:sign}
 P(\pi)=-P(0),
 \end{equation}
-and bisection finds $\beta^\ast\in[0,\pi]$ with $P(\beta^\ast)=0$. There the half-sums agree, so
-taking $\theta_j=\nu_j(\beta^\ast)$ satisfies~\eqref{eq:split} with no further branch shift and
-gives $\varphi=0$; the pivot $g=R_z(\alpha)R_y(\beta^\ast)$ lets the additional CX merge.
+and by continuity $P(\beta^\ast)=0$ for some $\beta^\ast\in[0,\pi]$. There the sums over the
+two halves agree. Taking
+$\mu_k=\nu_k(\beta^\ast)$, the middle half $S$ satisfies~\eqref{eq:split} with $\ell=0$. Placing
+these lifted eigenphases on the basis states with $h_j=+1$ and the rest on $h_j=-1$, with no
+additional branch shifts
+($m_j=0$ in~\eqref{eq:branch}), gives $\varphi=0$, and the pivot $g=R_z(\alpha^\ast)R_y(\beta^\ast)$
+lets the additional CX merge.
 
 \subsection{Gate count}\label{sec:count}
 

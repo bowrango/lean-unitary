@@ -69,13 +69,13 @@ The quantum Shannon decomposition (QSD)~\cite{smb} introduced the recursive patt
   ($(frz.north west)+(-\p,\p)$) rectangle ($(frz.east|-fmc.south)+(\p,-\p)$);
 \end{tikzpicture}
 \caption{The template for decomposing a target $n$-qubit unitary $U$. We introduce a single-qubit pivot gate
-$g^\dagger$ (blue fill) which allows the left-side multiplexor (blue dots) to use one fewer CX gate. This template is applied recursively to the four generic $(n-1)$-qubit unitaries (blank boxes), leading to a reduction of $(4^{n-2}-1)/3$ CX gates.}
+$g^\dagger$ (blue fill) which allows the left-side multiplexor (blue dots) to use one fewer CX gate by merging it into the central multiplexor. This template is applied recursively to the four generic $(n-1)$-qubit unitaries (blank boxes), leading to a reduction of $(4^{n-2}-1)/3$ CX gates.}
 \label{fig:node}
 \end{figure}
 
 \subsection{Our contribution}
 
-We adapt the current record-holding Block-ZXZ decomposition a parameterized single-qubit gate at each recursive step, as depicted in Fig.~\ref{fig:node} with blue highlights. This gate is choosen such that an additional CX gate can be merged into the central multiplexor, similar to the original optimizations used by Block-ZXZ to improve QSD. However, as outlined in Section~\ref{sec:alg}, the gate parameters do require iterative search, unlike the direct commutative optimizations used by Block-ZXZ. To remedy this, we provide a principled method to obtain these parameters which is unlike the conventional gradient-based approaches. Section~\ref{sec:res} presents numerical experiments with discusson on the practically of our decomposition. Table~\ref{tab:counts} summarizes our main gate count result.
+We adapt the current record-holding Block-ZXZ decomposition with a parameterized single-qubit gate at each recursive step, as depicted in Fig.~\ref{fig:node} with blue highlights. This gate is choosen such that an additional CX gate can be merged into the central multiplexor, similar to the original optimizations used by Block-ZXZ to improve QSD. However, as outlined in Section~\ref{sec:alg}, the gate parameters do require iterative search, unlike the direct commutative optimizations used by Block-ZXZ. To remedy this, we provide a principled method to obtain these parameters which is unlike the conventional gradient-based approaches. Section~\ref{sec:res} presents numerical experiments with discusson on the practically of our decomposition. Table~\ref{tab:counts} summarizes our main gate count result.
 
 \begin{table}[!b]
 \centering
@@ -98,10 +98,8 @@ Theoretical lower bound & 0 & 3 & 14 & 61 & 252 & 1020 & $(1/4)\cdot(4^n-3n-1)$\
 %==========================================================================================
 \section{An improved algorithm}\label{sec:alg}
 
-We add a pivot gate $g$ on $t$ to each node (Fig.~\ref{fig:node}) and show that a suitable $g$ lets
-the left-side multiplexor merge an additional CX (Sec.~\ref{sec:fold}), when this is possible
-(Sec.~\ref{sec:cond}), how to choose $g$ (Sec.~\ref{sec:exist}), and what it saves
-(Sec.~\ref{sec:count}).
+Sec.~\ref{sec:fold} motivates the pivot gate, Sec.~\ref{sec:cond} states when the merge is possible,  
+Sec.~\ref{sec:exist} shows how the compute the parameters, and finally Sec.~\ref{sec:count} derives the main CX count result. 
 
 \begin{figure}[t]
 \centering
@@ -119,51 +117,43 @@ the left-side multiplexor merge an additional CX (Sec.~\ref{sec:fold}), when thi
 \lstick{$q_0$} & & & \ctrl{-2} & & & & \ctrl{-2} & & &
 \end{quantikz}
 \end{tabular}
-\caption{Detailed view of $g^\dagger$ and the left-side multiplexor (blue region of Fig.~\ref{fig:node} for $n=3$).
+\caption{Detailed view of $g^\dagger$ and the left-side multiplexor (blue highlight of Fig.~\ref{fig:node} for $n=3$).
 (a)~Block-ZXZ: $R_z(\varphi)$ separates the final CX gate from the Hadamard, so it cannot be merged into the central factor
-(grey). (b)~This work: the pivot gate $g^\dagger$ makes $\varphi=0$ so the CX gate can be merged. The left-side multiplexor uses $2$ CX gates instead of $3$.}
+(grey). (b)~This work: the pivot gate $g^\dagger$ makes $\varphi=0$ so the CX gate can be merged. The central multiplexor (not shown)
+uses the same number of CX gates after merging, but now the left-side multiplexor uses 2 instead of 3.}
 \label{fig:fold}
 \end{figure}
 
 \subsection{Merging an additional CX into the central multiplexor}\label{sec:fold}
 
-Multiplexors arise from \emph{demultiplexing}: every block-diagonal
-$U_1\oplus U_2$ (meaning $U_1$ when $t=0$ and $U_2$ when $t=1$) factors as
+A generic multiplexed gate has a block-diagonal form $U_1\oplus U_2$ with the well-known decomposition \cite{mottonen}:
 \begin{equation}\label{eq:demux}
-U_1\oplus U_2=(I\otimes V)\,\Delta(\theta)\,(I\otimes W),\qquad
+U_1\oplus U_2=(I\otimes V)\,\Delta(\boldsymbol\theta)\,(I\otimes W),\qquad
 U_1U_2^\dagger=V\operatorname{diag}(e^{-i\theta_j})V^\dagger ,
 \end{equation}
-so the angles $\theta_j$ are the eigenphases of $U_1U_2^\dagger$ up to sign.
-
-We parameterize the pivot as $g:=R_z(\alpha)R_y(\beta)$ and write
+where the diagonal matrix $\Delta(\boldsymbol\theta)$ is a multiplexed rotation, $\boldsymbol\theta$ are the eigenphases of $U_1U_2^\dagger$, and $V$,$W$ are unitary matrices. This multiplexed rotation is depicted in (Fig.~\ref{fig:fold}a), where the single-qubit rotation angles computed with
+\begin{equation}\label{eq:walsh}
+\boldsymbol\varphi=\frac1D H_D\,\boldsymbol\theta,
+\end{equation}
+where $H_D$ is the $D\times D$ Walsh--Hadamard matrix following the conventional Grey code order. As shown in (Fig.~\ref{fig:fold}b), our improvement comes from removing the final angle,
+\begin{equation}\label{eq:phi}
+\varphi=\frac1D\,\mathbf h^{\mathsf T}\boldsymbol\theta,
+\end{equation}
+where $\mathbf h$ is the column of $H_D$ corresponding to the top control qubit, i.e., $h_j=(-1)^{j_{n-2}}$ in Grey code order. This requires that the eigenphases $\boldsymbol\theta$ be balanced with $\mathbf h$ such that $\varphi=0$. To achieve this, we define the gate $g=R_z(\alpha)R_y(\beta)$ and write the full decomposition as
 \begin{equation}\label{eq:zxz}
 U=(\ast)\,\big(I\oplus C(g)\big)\,(g^\dagger\otimes I),
 \end{equation}
 where $I\oplus C(g)$ is the left-side multiplexor and $(\ast)$ collects the remaining right-side
-gates. The gate $g$ changes $C$; we call it a pivot because it is rotated until $C$ has a balanced
-split. By~\eqref{eq:demux},
-$I\oplus C(g)=(I\otimes V_c)\,\Delta(\boldsymbol\theta)\,(I\otimes W_c)$ with
+gates. We call $g$ a $\textit{pivot}$ because it rotates the eigenspectrum of $C$ to satisfy $\varphi=0$.
+
+By ~\eqref{eq:demux}, this modified left-side multiplexor can be decomposed as
 \begin{equation}\label{eq:democ}
-C(g)=V_c\operatorname{diag}\big(e^{i\theta_0},\dots,e^{i\theta_{D-1}}\big)V_c^\dagger ,
+C(g)=V\operatorname{diag}\big(e^{i\theta_0},\dots,e^{i\theta_{D-1}}\big)V^\dagger ,
 \end{equation}
-so the angles $\boldsymbol\theta=(\theta_0,\dots,\theta_{D-1})^{\mathsf T}$ are the eigenphases
-$\mu_0,\dots,\mu_{D-1}$ of $C(g)$ in some order, up to branch: $\theta_k=\mu_k+2\pi m_k$ with
-$m_k\in\mathbb Z$ (a $2\pi$ shift flips the sign of one eigenvector, which $V_c$ and $W_c$
-absorb). In Gray-code form~\cite{mottonen}, $\Delta(\boldsymbol\theta)$ is a
-sequence of $D$ rotations $R_z(\varphi_k)$ on $t$, each followed by a CX onto $t$, with
-\begin{equation}\label{eq:walsh}
-\boldsymbol\varphi=\frac1D H_D\,\boldsymbol\theta ,
-\end{equation}
-where $H_D$ is the $D\times D$ Walsh--Hadamard matrix with rows in Gray-code order. The circuit ends
-with $\CX(q_0,t)$, $R_z(\varphi)$, $\CX(q_{n-2},t)$ (Fig.~\ref{fig:fold}a), and the angle
-$\varphi=\varphi_{D-1}$ comes from the row $\mathbf h$ of $H_D$ for the highest control bit,
-$h_j=(-1)^{j_{n-2}}$:
-\begin{equation}\label{eq:phi}
-\varphi=\frac1D\,\mathbf h^{\mathsf T}\boldsymbol\theta .
-\end{equation}
-If $\varphi=0$, then $R_z(\varphi)$ is the identity, the last two CX gates
-are adjacent, and both merge through the Hadamard (Fig.~\ref{fig:fold}b). The central multiplexor
-keeps its cost, and the left-side multiplexor drops from $D-1$ to $D-2$ CX gates.
+
+TODO clarify the permulation freedom.
+We note that these eigenphases $\theta_k=\mu_k+2\pi m_k$ with
+$m_k\in\mathbb Z$ (a $2\pi$ shift flips the sign of one eigenvector).
 
 \subsection{When is the additional merge possible?}\label{sec:cond}
 

@@ -1,7 +1,7 @@
 # Optimized Block-ZXZ Decomposition
 
-`decomposition.py` implements extra-fold Block-ZXZ synthesis and reconstruction checks
-`benchmark.py` imports its helpers to compare baseline and improved synthesis
+ - `decomposition.py` implements the improved decomposition and validates reconstruction error
+ - `benchmark.py` compares the improved decomposition with the baseline
 
 ## Requirements
 

@@ -12,5 +12,8 @@ import LeanUnitary.Decomposition.BlockZXZ
 import LeanUnitary.Pivot.Path
 import LeanUnitary.Pivot.Multiplexor
 import LeanUnitary.Pivot.Split
+import LeanUnitary.Pivot.Rotation
+import LeanUnitary.Pivot.Lift
+import LeanUnitary.Pivot.Existence
 import LeanUnitary.Pivot.Count
 import LeanUnitary.Claims

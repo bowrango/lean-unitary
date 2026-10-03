@@ -49,13 +49,22 @@ axioms (`propext`, `Classical.choice`, `Quot.sound`).
 | `Pivot/Multiplexor.lean` | Eqs. (10), (11) | `multiplexor` = `C(β)` via the continuous functional calculus; `multiplexor_pi`: `C(π) = C(0)ᴴ`; `multiplexor_mem_unitaryGroup`: `C(β)` is unitary when `X_g`, `Y_g` are invertible (via the polar factor `invSqrt_mul_mem_unitaryGroup`); `multiplexor_pi_eq_inv`: `C(π) = C(0)⁻¹` | proved |
 | `Pivot/Split.lean` | Eqs. (3), (6)–(8) | `walsh_eq` (φ depends only on the split and an integer `ℓ`); `exists_walsh_eq_zero_iff` (φ = 0 is attainable iff a balanced split exists) | proved |
 | `Pivot/Count.lean` | Eqs. (18), (19) | `count_closed`, `count_eq` (`(21·4^n − 72·2^n + 96)/48`); `zxzCount_eq` (the Spec's Block-ZXZ bound); `saving`, `saving_succ` | proved |
-| `Pivot/Existence.lean` | Eqs. (13)–(17) | choice of `α*` with `N₊ = N₋`, the imbalance `P(β)` with `P(π) = −P(0)`, and an intermediate-value root `β*` | planned |
+| `Pivot/Rotation.lean` | Eq. (13) | `exists_rotation_half_upper`: if no two `τ_k` lie on a common line through the origin, some rotation `e^{iα*}` makes `N₊ = N₋ = D/2` with no `τ_k` real (via a discrete intermediate value theorem, `exists_eq_of_step_le_one`) | proved |
+| `Pivot/Lift.lean` | Eq. (15) | `normalized_lift_unique`: two normalized lifts (`ν₀ ≤ ⋯ ≤ ν_{D−1} ≤ ν₀ + 2π`) of the same phases with the same sum are equal; `neg_rev_eq_of_lift`: the endpoint relation `ν(π) = −ν(0) ∘ rev` from negated phases and negated sum | proved |
+| `Pivot/Existence.lean` | Eqs. (15)–(17) | `imbalance_neg_rev` (`P(π) = −P(0)` under `ν_k(π) = −ν_{D−1−k}(0)`); `exists_imbalance_eq_zero` (root `β*` by the intermediate value theorem); `exists_walsh_eq_zero_of_lift` (at `β*`, φ = 0 is attainable); `exists_walsh_eq_zero_of_normalized_lift` (the same, with the endpoint relation derived via `Lift.lean`) | proved, given a continuous eigenphase lift |
 | `Pivot/Synthesis.lean` | Sec. II.D | the circuit: Block-ZXZ with the pivot and the extra merge, giving `Claims.synth` with `f n = (21·4^n − 72·2^n + 96)/48` | planned |
 
 Next steps, in dependency order:
 
-1. **Existence (Eqs. 13–17).** This is the hard analytic step. It needs continuous eigenphase
-   branches along `β` and the intermediate value theorem.
+1. **Continuous eigenphase lift (Eqs. 14–15).** `exists_walsh_eq_zero_of_normalized_lift`
+   still takes as hypotheses a lift `ν(β)` of the eigenphases of `C(β)` that is continuous on
+   `[0, π]` and normalized at both endpoints, its phases at `π` being the negated phases at `0`, and
+   `σ(π) = −σ(0)`. The negated phases should follow from `C(π) = C(0)⁻¹` (the eigenvalues of the
+   inverse of a unitary are their conjugates), which is not yet formalized. The rest is continuity: `C(β)` is
+   continuous along the path (`X_g`, `Y_g` stay invertible by `det_Xg_eq_prod` and the choice of
+   `α*`), the phase `σ(β)` of `det C` comes from path lifting (`IsCoveringMap.liftPath` in
+   Mathlib), and the eigenvalues depend continuously on the matrix. That last fact is not in
+   Mathlib and is the main analytic gap.
 2. **Synthesis.** Build on the baseline milestones (`LinearAlgebra`, `Blocks`, `Circuit.denote_lift`
    and `Decomposition/BlockZXZ`), which are still `sorry`. Then replace the `Claims.synth` bound.
 

@@ -1,11 +1,11 @@
-"""Data for the explainer video: one Haar-random target run through stage2/foldzxz_opt.py."""
+"""Data for the explainer video: one Haar-random target run through experiments/foldzxz_opt.py."""
 import os
 import sys
 from functools import lru_cache
 
 import numpy as np
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "stage2"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "experiments"))
 from core import random_unitary  # noqa: E402
 from foldzxz_opt import PivotPath, ordered_phases, unitary_phases  # noqa: E402
 

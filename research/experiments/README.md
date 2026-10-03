@@ -1,10 +1,13 @@
-# Stage 2 research: beating block-ZXZ
+# Experiments: beating block-ZXZ
 
 Findings from an exploration of whether the CNOT count of exact n-qubit unitary synthesis can be
 pushed below the best known construction, block-ZXZ (Krol & Al-Ars, arXiv:2403.13692), in a form
 that could be proved in Lean. Everything here is numerical prototyping in Python; nothing is
 formalized. Conventions match `LeanUnitary/Spec.lean` (qubit `q` = bit `q`, top qubit = most
 significant bit, circuits applied first to last, the same `Ry`/`Rz`).
+
+Counts are compared by the **lower-bound ratio**: the mean over n = 3..8 of c(n) / ⌈(4^n − 3n − 1)/4⌉,
+where 1 means meeting the Shende–Markov–Bullock lower bound. Block-ZXZ scores 1.657.
 
 ## Conclusions
 
@@ -30,20 +33,20 @@ significant bit, circuits applied first to last, the same `Ry`/`Rz`).
    14 exact / 13 up to a diagonal. The numerical optimum has no piece-by-piece structure that
    eigen-, polar- or KAK-type algebra produces, so closing the gap needs a genuinely new
    constructive idea.
-5. **For the formal stage 2**, the realistic target is a verified block-ZXZ plus small, provable
+5. **For the formalization**, the realistic target is a verified block-ZXZ plus small, provable
    constant-term gains. That turned out to be too pessimistic: section 10 gives a proved
    leading-coefficient improvement (21/48) whose formalization is substantial but routine.
 6. **The most promising unproved lever** (section 8) moves the glue, not the leaves. Splitting k
    qubits per node, with each glue multiplexed only over the bottom register, needs 4^k − 1 glues
    instead of block-ZXZ's 3·2^(k−1)(2^k − 1). A "round-robin" Pauli sequence has full Jacobian rank
    at every tested size and fits Haar-random targets exactly. Taken to k = n − 2 it would give
-   6·4^(n−2) − 3 CNOTs (18/48; hill score 1.483 vs 1.657). It generalizes block-ZXZ (k = 1), but
+   6·4^(n−2) − 3 CNOTs (18/48; lower-bound ratio 1.483 vs 1.657). It generalizes block-ZXZ (k = 1), but
    global surjectivity for k ≥ 2 is unproved. No construction reaching the lower bound itself is
    provable today: the best numerical one (arXiv:2511.16736, lower-bound counts for n ≤ 5) is
    conjectural too.
 7. **Proved improvement (section 10): 21/48.** Top-qubit gates chosen by a parity rule and the
    intermediate value theorem let every block-ZXZ node fold one more CNOT: c(n) = (21·4^n − 72·2^n + 96)/48,
-   i.e. 18 / 90 / 402 CNOTs at n = 3 / 4 / 5, verified end to end. Hill score 1.576 vs 1.657. The same
+   i.e. 18 / 90 / 402 CNOTs at n = 3 / 4 / 5, verified end to end. Lower-bound ratio 1.576 vs 1.657. The same
    fold on the output side works numerically (17 CNOTs at n = 3, 20/48 overall), but its proof is open.
 8. **A proof of the k = 2 case was attempted and not found** (section 9). Every standard provable
    route is rigid at 18 glues, and the 15-glue sequences have hundreds to thousands of isolated
@@ -70,7 +73,7 @@ significant bit, circuits applied first to last, the same `Ry`/`Rz`).
 | `pauli_glue_k.py`, `pg_k_cx.py` | the same for any k; `round_robin` builds the round-robin sequence |
 | `pg_fitk.py` | global fit of a k-level node to Haar-random targets (`python3 pg_fitk.py k nL targets`) |
 | `rr_compile.py` | compiles a fitted node (k = n − 2) to an explicit CNOT circuit and checks it |
-| `rr_count.py` | CNOT recursion choosing the best k at each n; hill score if the conjecture were proved |
+| `rr_count.py` | CNOT recursion choosing the best k at each n; lower-bound ratio if the conjecture were proved |
 | `rr_solutions.py`, `rr_count_solutions.py`, `seq_solcount.py` | distinct solutions per target and their signed count (section 9) |
 | `rr_degree.py` | local degree of the node map at a solution, modulo the gauge torus (section 9) |
 | `foldzxz.py` | **block-ZXZ with the extra C-side fold at every node: 18 / 90 / 402 CNOTs at n = 3 / 4 / 5 (section 10)** |
@@ -336,7 +339,7 @@ are free and change C. With them:
 
     c(n) = 4 c(n−1) + 3·2^(n−1) − 6,  c(2) = 3   ⇒   c(n) = (21·4^n − 72·2^n + 96)/48
 
-| n | 3 | 4 | 5 | 6 | 7 | 8 | hill score |
+| n | 3 | 4 | 5 | 6 | 7 | 8 | LB ratio |
 |---|---|---|---|---|---|---|---|
 | block-ZXZ | 19 | 95 | 423 | 1783 | 7319 | 29655 | 1.657 |
 | **with the C-side fold (proved below)** | **18** | **90** | **402** | **1698** | **6978** | **28290** | **1.576** |
@@ -392,8 +395,8 @@ argument, not an open problem.
 
 - **Prove the round-robin conjecture for k = 2** (section 8): a block-matrix generalization of
   the block-ZXZ derivation with glue multiplexed over n − 2 qubits instead of n − 1. Worth 1/48
-  on its own; each larger k proved moves toward 18/48. A proof for all k gives 18/48 and a hill
-  score of 1.483. A first step: a quick search for an algebraic peeling step (for example, one
+  on its own; each larger k proved moves toward 18/48. A proof for all k gives 18/48 and a
+  lower-bound ratio of 1.483. A first step: a quick search for an algebraic peeling step (for example, one
   multiplexed rotation chosen by an eigenproblem that makes the remainder block-structured),
   guided by the numerical solutions from `pg_fitk.py`.
 - **Provably near-optimal small blocks** (3 or 4 qubits) as recursion base cases: the only lever

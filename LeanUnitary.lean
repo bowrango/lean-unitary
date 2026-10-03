@@ -9,4 +9,8 @@ import LeanUnitary.Decomposition.CosineSine
 import LeanUnitary.Decomposition.TwoQubit
 import LeanUnitary.Decomposition.QSD
 import LeanUnitary.Decomposition.BlockZXZ
+import LeanUnitary.Pivot.Path
+import LeanUnitary.Pivot.Multiplexor
+import LeanUnitary.Pivot.Split
+import LeanUnitary.Pivot.Count
 import LeanUnitary.Claims

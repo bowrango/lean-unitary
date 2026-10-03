@@ -50,7 +50,7 @@ hence $C$, hence $\boldsymbol\theta$ and $\varphi$. The two pivot angles are fou
 
 \section*{2. Implementation}
 
-All quantities below are computed by \texttt{stage2/foldzxz\_opt.py}. Write
+All quantities below are computed by \texttt{experiments/foldzxz\_opt.py}. Write
 $U=\begin{psmallmatrix}X&Y\\ \ast&\ast\end{psmallmatrix}$ in $D\times D$ blocks, with $X,Y$
 invertible.
 
@@ -118,7 +118,7 @@ enumeration of splits.
 the CX count matches the formula $c(n)=\tfrac{21}{48}4^n-\tfrac32 2^n+2$ and that the circuit
 reproduces $U$ to machine precision, up to a global phase.
 
-\texttt{stage2/benchmark.py} compares the construction with Block-ZXZ on the same Haar-random
+\texttt{experiments/benchmark.py} compares the construction with Block-ZXZ on the same Haar-random
 unitaries for $n=3,\dots,10$ (Fig.~\ref{fig:benchmark}). Both CX counts match their closed forms at
 every $n$. The pivot search makes synthesis slower by a roughly constant factor, since every node
 stays $O(D^3)$ and the search adds only a bounded number of trials per node. The two methods share
@@ -137,7 +137,7 @@ axis.}
 
 The remaining figures follow one Haar-random target with $n=4$ through the construction, and are
 produced by
-\texttt{stage2/balanced\_figs.py}. The middle half $S$ is drawn in \textcolor{cmid}{blue} and the
+\texttt{experiments/balanced\_figs.py}. The middle half $S$ is drawn in \textcolor{cmid}{blue} and the
 outer quarters in \textcolor{cout}{orange}.
 
 \begin{figure}[H]

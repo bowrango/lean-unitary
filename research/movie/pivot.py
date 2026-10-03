@@ -2,7 +2,7 @@
 
 Render everything with ./render.sh, or one scene with
     python -m manim -qh pivot.py Path
-All data come from data.py, i.e. from stage2/foldzxz_opt.py on one Haar-random four-qubit target.
+All data come from data.py, i.e. from experiments/foldzxz_opt.py on one Haar-random four-qubit target.
 """
 import numpy as np
 from manim import (BLUE, DOWN, GREY, GREY_B, LEFT, ORANGE, ORIGIN, PI, RIGHT, UP, WHITE, YELLOW,

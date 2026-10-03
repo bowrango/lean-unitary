@@ -96,17 +96,24 @@ def plot(rows: list[dict], output: Path) -> None:
             ("zxz", "0.35", 22 / 48, "Block-ZXZ"),
             ("ours", "#0047cc", 21 / 48, "Improved"),
         ):
-            counts = [group[0][f"{key}_cx"] / 4.0**n
-                      for n, group in zip(ns, groups)]
+            raw = [group[0][f"{key}_cx"] for group in groups]
+            counts = [c / 4.0**n for n, c in zip(ns, raw)]
             times = [np.median([row[f"{key}_time"] for row in group])
                      for group in groups]
             ax.plot(ns, counts, "o-", color=color, ms=4, label=label)
-            ax.axhline(limit, color=color, ls=":", lw=0.9)
+            # label each point with its CX count: Block-ZXZ above, ours below
+            dy, va = (5, "bottom") if key == "zxz" else (-5, "top")
+            for n, c, y in zip(ns, raw, counts):
+                ax.annotate(str(c), (n, y), textcoords="offset points", xytext=(0, dy),
+                            ha="center", va=va, fontsize=5.5, color=color)
+            ax.axhline(limit, color=color, ls=":", lw=0.9, zorder=0)
             tx.plot(ns, times, "s-", color=color, ms=4, label=label)
         bound = [((4**n - 3*n + 2) // 4) / 4.0**n for n in ns]
         ax.plot(ns, bound, "o-", color="k", ms=4, label="lower bound")
         ax.axhline(12 / 48, color="k", ls=":", lw=0.9)
         ax.set_ylabel(r"leading coefficient $c_n/4^n$")
+        ax.set_ylim(top=0.49)                       # room for the Block-ZXZ count labels
+        ax.set_xlim(ns[0] - 0.4, ns[-1] + 0.5)      # and for the widest labels at the ends
         ax.set_title("(a) CX count", fontsize=9)
         ax.legend(frameon=False, fontsize=8, loc="center right",
                   bbox_to_anchor=(1.0, 0.45))

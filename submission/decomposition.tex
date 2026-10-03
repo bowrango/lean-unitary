@@ -312,6 +312,9 @@ to be constant.
 Each recursive step requires a one-dimensional root search with a guaranteed solution. 
 The CX count is independent of the method used to locate the root, so perhaps further runtime improvements can be made.
 
+A second pivot applied in reverse to the right-side multiplexor could perhaps save another
+$(4^{n-2}-1)/3$ CX gates, though the two pivots are coupled and would require a joint search.
+
 \begin{thebibliography}{9}
 \bibitem{smb} V.~V.~Shende, S.~S.~Bullock, I.~L.~Markov, \emph{Synthesis of quantum logic
 circuits}, IEEE TCAD 25, 1000 (2006), arXiv:quant-ph/0406176.

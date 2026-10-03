@@ -262,20 +262,19 @@ lets the additional CX merge.
 
 \subsection{Gate count}\label{sec:count}
 
-An $n$-qubit unitary requires at most $c_n$ CX gates, with
+Block-ZXZ needs at most $c_n\le4c_{n-1}+3\cdot2^{n-1}-5$ CX gates~\cite[Sec.~5.3]{zxz}: four
+$(n-1)$-qubit children and three multiplexors of $2^{n-1}$ CX gates each, less one CX for each of the
+three children decomposed up to a diagonal and one for each of the two CX gates merged into the
+central multiplexor. The pivot merges a third, so
 \begin{equation}\label{eq:rec}
 c_n= 4c_{n-1}+3\cdot2^{n-1}-6 ,\qquad c_2=3 .
 \end{equation}
-The four children cost $c_{n-1}$ each and the three multiplexors $2^{n-1}$ each, less six CX gates:
-three children are decomposed up to a diagonal that is merged into the next (one each), the
-right-side multiplexor folds one CX, and the left-side multiplexor folds two. Unrolling,
-\begin{align*}
-c_n&= 4^{n-2}c_2+\sum_{k=0}^{n-3}4^k\big(3\cdot2^{n-1-k}-6\big)
-= 4^{n-2}c_2+3\cdot2^{n-1}\big(2^{n-2}-1\big)-2\big(4^{n-2}-1\big)\\
-&=\frac{21}{48}\,4^n-\frac32\,2^n+2 .
-\end{align*}
-Block-ZXZ has $-5$ in place of $-6$ in~\eqref{eq:rec}, so one CX is saved at each of the
-$(4^{n-2}-1)/3$ recursion nodes.
+Unrolling over the $(4^{n-2}-1)/3$ recursion nodes as in~\cite[Sec.~5.3]{zxz},
+\[
+c_n=4^{n-2}c_2+3\cdot2^{n-1}\big(2^{n-2}-1\big)-2\big(4^{n-2}-1\big)
+=\tfrac{21}{48}\,4^n-\tfrac32\,2^n+2 ,
+\]
+one CX fewer than Block-ZXZ at every node.
 
 %==========================================================================================
 \section{Results and Discussion}\label{sec:res}

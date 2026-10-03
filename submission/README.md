@@ -15,9 +15,9 @@ Tested with Python 3.13, NumPy 2.3.2, SciPy 1.18.1, and Matplotlib 3.10.5.
 
 ## Usage
 
-From this directory:
+To reproduce the table:
 ```bash
-python decomposition.py 3 4 5 --seed 0 --samples 1
+python decomposition.py 3 4 5 6 --seed 0 --samples 1
 ```
 
 To reproduce the two-panel benchmark figure:

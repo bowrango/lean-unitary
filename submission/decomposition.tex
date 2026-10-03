@@ -2,6 +2,7 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb,amsthm}
 \usepackage{booktabs}
+\usepackage{graphicx}
 \usepackage{bm}
 \usepackage{tikz}
 \usetikzlibrary{quantikz2,calc}
@@ -20,9 +21,10 @@
 \newcommand{\CZ}{\mathrm{CZ}}
 \newcommand{\Pf}{\operatorname{Pf}}
 
-\title{One more fold per node: Block-ZXZ synthesis with\\ $\tfrac{21}{48}4^n$ CX gates}
+\title{An improved algorithm for arbitary unitary synthesis}
 \author{Matt Bowring\\[2pt]
-{\normalsize Elmore Family School of Electrical and Computer Engineering, Purdue University}}
+{\normalsize Purdue University}\\[2pt]
+{\normalsize\href{mailto:mbowring@purdue.edu}{\texttt{mbowring@purdue.edu}}}}
 \date{\today}
 
 \begin{document}
@@ -30,7 +32,7 @@
 
 \begin{abstract}
 This paper presents an improved quantum gate decomposition method that results in more optimal quantum circuits.
-The current best-known exact method requires $O(\frac{22}{48} 4^n)$ two-qubit gates for an arbitrary $n$-qubit unitary. We reduce this count to $O(\frac{21}{48} 4^n)$ by introducing a parameterized single-qubit $\textit{pivot}$ gate that removes a two-qubit gate at each recursive step. Unlike conventional gradient-based approaches used to optimize gate parameters, we provide a principled method and show such optimal parameters always exists. We verify our decomposition with numerical experiments and discuss the tradeoffs and practicality.
+The current best-known exact method requires $O(\frac{22}{48} 4^n)$ two-qubit gates for an arbitrary $n$-qubit unitary. We reduce this count to $O(\frac{21}{48} 4^n)$ by introducing a parameterized single-qubit $\textit{pivot}$ gate that removes a two-qubit gate at each recursive step. Unlike conventional gradient-based approaches used to optimize gate parameters, we provide a principled method and show sufficient parameters always exists. We verify our decomposition with numerical experiments and discuss the tradeoffs and practicality.
 \end{abstract}
 
 %==========================================================================================
@@ -77,7 +79,7 @@ $g^\dagger$ (blue fill) which allows the left-side multiplexor (blue dots) to us
 
 We adapt the current record-holding Block-ZXZ decomposition with a parameterized single-qubit gate at each recursive step, as depicted in Fig.~\ref{fig:node} with blue highlights. This gate is choosen such that an additional CX gate can be merged into the central multiplexor, similar to the original optimizations used by Block-ZXZ to improve QSD. However, as outlined in Section~\ref{sec:alg}, the gate parameters do require iterative search, unlike the direct commutative optimizations used by Block-ZXZ. To remedy this, we provide a principled method to obtain these parameters which is unlike the conventional gradient-based approaches. Section~\ref{sec:res} presents numerical experiments with discusson on the practically of our decomposition. Table~\ref{tab:counts} summarizes our main gate count result.
 
-\begin{table}[!b]
+\begin{table}[H]
 \centering
 \begin{tabular}{@{}lrrrrrrl@{}}
 \toprule
@@ -272,32 +274,43 @@ c_n= 4c_{n-1}+3\cdot2^{n-1}-6 ,\qquad c_2=3 .
 Unrolling over the $(4^{n-2}-1)/3$ recursion nodes as in~\cite[Sec.~5.3]{zxz},
 \[
 c_n=4^{n-2}c_2+3\cdot2^{n-1}\big(2^{n-2}-1\big)-2\big(4^{n-2}-1\big)
-=\tfrac{21}{48}\,4^n-\tfrac32\,2^n+2 ,
+=\tfrac{21}{48}\,4^n-\tfrac32\,2^n+2 .
 \]
-one CX fewer than Block-ZXZ at every node.
+Subtracting~\eqref{eq:rec} from the Block-ZXZ recurrence, the saving
+$\Delta_n=c_n^{\rm ZXZ}-c_n$ satisfies $\Delta_n=4\Delta_{n-1}+1$ with $\Delta_2=0$, so
+\begin{equation}\label{eq:saving}
+\Delta_n=\sum_{k=0}^{n-3}4^k=\frac{4^{n-2}-1}{3},
+\end{equation}
+one CX for each recursion node. This agrees with the difference of the closed forms,
+$\big(\tfrac{22}{48}-\tfrac{21}{48}\big)4^n+\tfrac53-2=\tfrac{4^{n-2}-1}{3}$.
 
 %==========================================================================================
 \section{Results and Discussion}\label{sec:res}
 
-We implemented the construction of Sec.~II in numpy, with the standard 3-CX and
-2-CX-up-to-diagonal two-qubit leaves. It reproduces the counts of Table~\ref{tab:counts} for
-Haar-random unitaries at $n=3,4,5$, with reconstruction errors below $2\cdot10^{-14}$. The sign
-relation $P(\pi)=-P(0)$ of~\eqref{eq:sign} held on every sampled target once $\alpha$ was chosen,
-and the root search succeeded on $300/300$ random three-qubit targets.
+We implemented the improved decomposition of Sec.~II in Python using standard linear algebra primitives 
+provided with numpy and scipy.
 
-The construction improves Block-ZXZ in the setting it was designed for: exact synthesis of every
-unitary with a guaranteed count. The leading coefficient drops from $\tfrac{22}{48}$ to
-$\tfrac{21}{48}$, about $4.5\%$ fewer CX gates asymptotically. The mechanism is the fold Block-ZXZ
-already uses; the new ingredient is a pivot gate that provably makes a third fold possible. The
-improvement is modest in absolute terms. The gap to the lower bound ($\tfrac{12}{48}$) remains,
-and numerical compilers reach fewer CX gates for small $n$~\cite{brickwall,squander}, though
-without closed forms or guarantees.
+Figure~\ref{fig:benchmark} compares the CX counts and total synthesis times for our proposed 
+decomposition against the current best-known Block-ZXZ decomposition. These comparisons uses
+the same random unitary instances.
+The target unitary matrix and reconstructed circuit matrix are equal to machine precision.
+All experiments were ran on a MacBook Pro (M1 series, 2021).
 
-Each node requires a one-dimensional root search, with the sign change~\eqref{eq:sign}
-guaranteeing a solution. The middle-half construction fixes the split in advance. Evaluating
-its imbalance requires matrix factorizations and sorting $D$ eigenphases, for $O(D^3)$
-arithmetic work and $O(D^2)$ storage per trial. The CX count is independent of the method
-used to locate the root.
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{bal_benchmark.pdf}
+\caption{Our improved decomposition (blue) against the best-known baseline Block-ZXZ (grey).
+(a)~CX count divided by $4^n$ with the lower bound in black. The
+dotted lines mark asymptotic coefficients $22/48$, $21/48$, and $12/48$.
+(b)~Total synthesis time on a logarithmic axis.}
+\label{fig:benchmark}
+\end{figure}
+
+Our decomposition method requires $\frac{4^{n-2}-1}{3}$ less CX gates while incuring roughly ~2x added runtime cost, which appears
+to be constant. 
+
+Each recursive step requires a one-dimensional root search with a guaranteed solution. 
+The CX count is independent of the method used to locate the root, so perhaps further runtime improvements can be made.
 
 \begin{thebibliography}{9}
 \bibitem{smb} V.~V.~Shende, S.~S.~Bullock, I.~L.~Markov, \emph{Synthesis of quantum logic

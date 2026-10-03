@@ -7,7 +7,7 @@ For a unitary U of dimension 2**n, decompose(U) returns (circuit, diagonal):
 U = diagonal @ circuit_matrix(circuit, n), up to numerical precision.
 
 Qubit q is bit q of a basis index. Gate tuples are in execution order:
-("u", q, matrix) and ("cx", control, target). Two-qubit leaves use the algebraic
+("u", q, matrix) and ("cx", control, target). The two-qubit leaves use the algebraic
 Shende-Markov-Bullock constructions (three CX, or two with a diagonal carry):
 https://arxiv.org/abs/quant-ph/0308033 (Props. IV.3, V.1, V.2)
 https://arxiv.org/abs/quant-ph/0308045 (Prop. III.3).
@@ -256,7 +256,7 @@ def leaf(U: np.ndarray, want_diag: bool) -> tuple[list[tuple], np.ndarray]:
     return circuit, phase * core_phase * np.diag(diagonal)
 
 
-# Optimized extra-fold Block-ZXZ algorithm
+# Routines presented in "An improved algorithm for arbitary unitary synthesis"
 
 
 def wrap(x):

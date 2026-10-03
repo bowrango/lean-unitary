@@ -4,10 +4,6 @@
 Requires decomposition.py, NumPy, SciPy, and Matplotlib; no other repository files.
 Run: python benchmark.py --nmin 3 --nmax 10 --samples 1 --seed 0
 Writes the comparison figure to bal_benchmark.pdf.
-
-Both methods use the same algebraic two-qubit synthesis: three CX gates, or two
-with a diagonal carry. Timings include the complete synthesis, including leaves,
-and exclude target generation and plotting.
 """
 
 from __future__ import annotations

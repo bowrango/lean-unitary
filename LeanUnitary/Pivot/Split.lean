@@ -14,6 +14,9 @@ branch shifts. This module proves:
   `ℓ = Σ_j h_j m_j`;
 * `exists_walsh_eq_zero_iff` (Eq. 8): some assignment and branches give `φ = 0` iff there is a
   balanced split, a set `S` with `|S| = |P|` and `Σ_S μ - Σ_{Sᶜ} μ ∈ 2π ℤ`.
+
+The Walsh row of the top control qubit is `topPlus`, and the final Gray-code angle of Eq. 3 is
+`finalAngle`.
 -/
 
 namespace LeanUnitary.Pivot
@@ -89,5 +92,21 @@ theorem exists_walsh_eq_zero_iff {P : Finset ι} (hP : P.Nonempty) (μ : ι → 
     refine ⟨e, fun j => if j = j₀ then ℓ else 0, ?_⟩
     rw [walsh_eq, he, hℓ]
     simp [walshSign, hj₀]
+
+/-! ## The top control qubit -/
+
+variable {q : ℕ}
+
+/-- The basis states with `h_j = +1`: top control qubit `0`, i.e. `j < D/2`. -/
+def topPlus (q : ℕ) : Finset (Fin (4 * q)) := univ.filter fun j => j.val < 2 * q
+
+theorem card_topPlus : (topPlus q).card = 2 * q := by
+  rw [topPlus, Fin.card_filter_val_lt]
+  omega
+
+/-- The final Gray-code angle `φ = (1/D) Σ_j h_j θ_j` (Eq. 3), with `h_j = +1` on the basis states
+whose top control qubit is `0`. -/
+noncomputable def finalAngle (q : ℕ) (θ : Fin (4 * q) → ℝ) : ℝ :=
+  (1 / (4 * q : ℝ)) * ∑ j, walshSign (topPlus q) j * θ j
 
 end LeanUnitary.Pivot

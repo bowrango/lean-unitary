@@ -19,6 +19,7 @@ construction is proved, `count_eq` gives a `GeneralBound` with
 
 namespace LeanUnitary.Pivot
 
+
 /-- `4 · 2^n ≤ 4^n` for `n ≥ 2`, so the closed forms below involve no truncated subtraction. -/
 theorem four_mul_two_pow_le (n : ℕ) (hn : 2 ≤ n) : 4 * 2 ^ n ≤ 4 ^ n := by
   have h : 4 ^ n = 2 ^ n * 2 ^ n := by rw [← mul_pow]; norm_num
@@ -93,17 +94,6 @@ theorem saving (n : ℕ) (hn : 2 ≤ n) :
   have h4 : 4 ^ (k + 2) = 16 * 4 ^ k := by ring
   have hpos : 1 ≤ 4 ^ k := Nat.one_le_pow _ _ (by norm_num)
   rw [Nat.add_sub_cancel]
-  omega
-
-/-- The saving recursion `Δ_n = 4 Δ_{n-1} + 1`, `Δ_2 = 0`: one extra merge per node. -/
-theorem saving_succ (n : ℕ) (hn : 2 ≤ n) :
-    zxzCount (n + 1) - count (n + 1) = 4 * (zxzCount n - count n) + 1 := by
-  have h := (saving n hn).2
-  have h' := (saving (n + 1) (by omega)).2
-  obtain ⟨k, rfl⟩ : ∃ k, n = k + 2 := ⟨n - 2, by omega⟩
-  have h4 : 4 ^ (k + 2 + 1 - 2) = 4 * 4 ^ (k + 2 - 2) := by
-    rw [show k + 2 + 1 - 2 = k + 1 by omega, show k + 2 - 2 = k by omega, pow_succ]; ring
-  have hpos : 1 ≤ 4 ^ (k + 2 - 2) := Nat.one_le_pow _ _ (by norm_num)
   omega
 
 end LeanUnitary.Pivot

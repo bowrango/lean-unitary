@@ -1,8 +1,7 @@
 import LeanUnitary.Pivot.Split
-import LeanUnitary.Pivot.Lift
 
 /-!
-# Existence of the pivot angle `β*`
+# The middle-half imbalance and the sign change
 
 The sign-change argument of `submission/decomposition.tex`, Sec. II.C ("Choosing β"). The
 multiplexor has `D = 4q` eigenphases, and `ν β : Fin D → ℝ` is the ordered, lifted list of the
@@ -18,9 +17,9 @@ From these two properties this module proves:
   `β* ∈ [0, π]`;
 * `exists_walsh_eq_zero_of_lift`: at `β*` the eigenphases admit a balanced split, so by
   `Pivot.exists_walsh_eq_zero_iff` some assignment to basis states makes the final angle `φ`
-  vanish, which lets the extra CX merge;
-* `exists_walsh_eq_zero_of_normalized_lift`: the same, with the endpoint relation derived from
-  the uniqueness of the normalized lift (`Pivot.neg_rev_eq_of_lift`).
+  vanish, which lets the extra CX merge.
+
+The two properties of `ν` are proved in `LeanUnitary.Pivot.Existence.Pivot`.
 -/
 
 namespace LeanUnitary.Pivot
@@ -32,9 +31,6 @@ variable {q : ℕ}
 /-- The middle half `S = {D/4, …, 3D/4 - 1}` of the ranks, with `D = 4q`. -/
 def middleHalf (q : ℕ) : Finset (Fin (4 * q)) := univ.filter fun k => q ≤ k.val ∧ k.val < 3 * q
 
-/-- The basis states with `h_j = +1`: top control qubit `0`, i.e. `j < D/2`. -/
-def topPlus (q : ℕ) : Finset (Fin (4 * q)) := univ.filter fun j => j.val < 2 * q
-
 theorem mem_middleHalf_rev (k : Fin (4 * q)) : k.rev ∈ middleHalf q ↔ k ∈ middleHalf q := by
   simp only [middleHalf, mem_filter, mem_univ, true_and, Fin.val_rev]
   omega
@@ -45,10 +41,6 @@ theorem card_middleHalf : (middleHalf q).card = 2 * q := by
     ext k; simp only [middleHalf, mem_filter, mem_univ, true_and, mem_sdiff]; omega
   rw [this, card_sdiff_of_subset (fun k => by simp only [mem_filter, mem_univ, true_and]; omega),
     Fin.card_filter_val_lt, Fin.card_filter_val_lt]
-  omega
-
-theorem card_topPlus : (topPlus q).card = 2 * q := by
-  rw [topPlus, Fin.card_filter_val_lt]
   omega
 
 /-- Eq. 17: the endpoint relation `ν' = -ν ∘ rev` negates the imbalance over the middle half. -/
@@ -90,18 +82,5 @@ theorem exists_walsh_eq_zero_of_lift (hq : 0 < q) (ν : ℝ → Fin (4 * q) → 
   refine ⟨β, hβ, (exists_walsh_eq_zero_iff hne (ν β)).mpr ⟨middleHalf q, ?_, 0, ?_⟩⟩
   · rw [card_middleHalf, card_topPlus]
   · simp [h0]
-
-/-- The existence argument with the endpoint relation derived rather than assumed. `ν β` is
-the normalized lift of the eigenphases of `C(β)` (Eq. 15). At `β = π` the phases are negated
-(`C(π) = C(0)⁻¹`) and so is the sum (`σ(π) = -σ(0)`, Eq. 14), so by `neg_rev_eq_of_lift`
-`ν(π) = -ν(0) ∘ rev`. -/
-theorem exists_walsh_eq_zero_of_normalized_lift (q : ℕ) (ν : ℝ → Fin (4 * (q + 1)) → ℝ)
-    (hν : ContinuousOn ν (Set.Icc 0 Real.pi))
-    (hnorm0 : Normalized (n := 4 * q + 3) (ν 0)) (hnormπ : Normalized (n := 4 * q + 3) (ν Real.pi))
-    (hres : SameResidues (n := 4 * q + 3) (fun k => -ν 0 k) (ν Real.pi))
-    (hsum : ∑ k, ν Real.pi k = -∑ k, ν 0 k) :
-    ∃ β ∈ Set.Icc 0 Real.pi, ∃ (e : Equiv.Perm (Fin (4 * (q + 1)))) (m : Fin (4 * (q + 1)) → ℤ),
-      walsh (topPlus (q + 1)) (ν β) e m = 0 :=
-  exists_walsh_eq_zero_of_lift (Nat.succ_pos q) ν hν (neg_rev_eq_of_lift hnorm0 hnormπ hres hsum)
 
 end LeanUnitary.Pivot

@@ -1,4 +1,4 @@
-import LeanUnitary.Pivot.Path
+import LeanUnitary.Pivot.Path.Gate
 
 /-!
 # The pivoted multiplexor `C(β)`

@@ -2,6 +2,7 @@
 
  - `decomposition.py` implements the improved decomposition and validates reconstruction error
  - `benchmark.py` compares the improved decomposition with the baseline
+ - `diagram.tex` is the diagram of the Lean formalization (`../LeanUnitary/`), rendered to `diagram.pdf` and `diagram.png`
 
 ## Requirements
 

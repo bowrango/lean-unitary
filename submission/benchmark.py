@@ -3,7 +3,7 @@
 
 Requires decomposition.py, NumPy, SciPy, and Matplotlib; no other repository files.
 Run: python benchmark.py --nmin 3 --nmax 10 --samples 1 --seed 0
-Writes the comparison figure to bal_benchmark.pdf.
+Writes the comparison figure to benchmark.pdf.
 """
 
 from __future__ import annotations

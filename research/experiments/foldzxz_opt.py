@@ -4,7 +4,7 @@ Choose alpha so exactly half the eigenvalues of exp(i alpha) X^-1 Y are in
 each half-plane. Ordered eigenphase lifts of C then reverse and negate between
 beta = 0 and pi. Their middle half defines a continuous imbalance with opposite
 endpoint signs, so Brent's method finds a balanced split. Each trial uses one
-SVD and one Hermitian eigensolve on D-by-D matrices, plus O(D log D) phase
+SVD and one Hermitian eigensolve on d-by-d matrices, plus O(d log d) phase
 sorting; no combinatorial subset list is formed.
 
 The numerical search handles generic, nonsingular paths. Simple balanced
@@ -43,20 +43,20 @@ def wrap(x):
 def cyclic_split(mu):
     """Best contiguous half in circular order of principal eigenphases.
 
-    There are only D/2 distinct candidates. The middle half of any ordered lift
+    There are only d/2 distinct candidates. The middle half of any ordered lift
     is one of these, so a root of PivotPath's imbalance must be recovered here.
     This does not attempt a general subset-sum search for an arbitrary spectrum.
     Return the indices in the original order and the absolute phase residual.
     """
     mu = np.asarray(mu)
-    D = len(mu)
-    if D < 4 or D % 4:
+    d = len(mu)
+    if d < 4 or d % 4:
         raise ValueError("The block dimension must be a positive multiple of four")
     order = np.argsort(mu)
     phases = mu[order]
-    half = D // 2
+    half = d // 2
     prefix = np.r_[0.0, np.cumsum(phases)]
-    sums = prefix[half:D] - prefix[:half]
+    sums = prefix[half:d] - prefix[:half]
     residuals = np.abs(wrap(2 * sums - phases.sum()))
     start = int(np.argmin(residuals))
     return order[start:start + half], float(residuals[start])
@@ -74,10 +74,10 @@ def unitary_phases(C):
     Ch = C.conj().T
     w, V = sl.eigh((C + Ch) / 2 + GAMMA * (C - Ch) / 2j, driver="evd")
     lam = np.einsum("ij,ij->j", V.conj(), C @ V)
-    i, D = 0, len(w)
-    while i < D - 1:
+    i, d = 0, len(w)
+    while i < d - 1:
         j = i
-        while j < D - 1 and w[j + 1] - w[j] < CLUSTER_TOL:
+        while j < d - 1 and w[j + 1] - w[j] < CLUSTER_TOL:
             j += 1
         if j > i:
             block = V[:, i:j + 1]
@@ -135,11 +135,11 @@ class PivotPath:
     """Cached path with a continuous middle-half imbalance and opposite endpoint values."""
 
     def __init__(self, U, n):
-        D = 2 ** (n - 1)
-        if n < 3 or U.shape != (2 * D, 2 * D):
+        d = 2 ** (n - 1)
+        if n < 3 or U.shape != (2 * d, 2 * d):
             raise ValueError("A pivot requires a 2**n square unitary with n >= 3")
-        self.D = D
-        X, Y = U[:D, :D], U[:D, D:]
+        self.d = d
+        X, Y = U[:d, :d], U[:d, d:]
         try:
             rho = np.linalg.eigvals(np.linalg.solve(X, Y))
         except np.linalg.LinAlgError as error:
@@ -147,15 +147,15 @@ class PivotPath:
         self.alpha, self.tau = _choose_alpha(rho)
         self.t = np.angle(self.tau)
 
-        # X_g^dagger Y_g = K + cos(beta) H + sin(beta) B.
+        # X_g^dagger Y_g = A_- + cos(beta) A_+ + sin(beta) B.
         A = np.exp(1j * self.alpha) * (X.conj().T @ Y)
-        self.H = (A + A.conj().T) / 2
-        self.K = (A - A.conj().T) / 2
+        self.A_plus = (A + A.conj().T) / 2
+        self.A_minus = (A - A.conj().T) / 2
         self.B = (Y.conj().T @ Y - X.conj().T @ X) / 2
 
     def C(self, beta):
         """Compute only C, using the unitary polar factor of X_g^dagger Y_g."""
-        M = self.K + np.cos(beta) * self.H + np.sin(beta) * self.B
+        M = self.A_minus + np.cos(beta) * self.A_plus + np.sin(beta) * self.B
         left, _, right = np.linalg.svd(M)
         return -1j * (left @ right)
 
@@ -165,12 +165,12 @@ class PivotPath:
         return np.sum(self.t + np.angle(c - s / self.tau) - np.angle(c + s * self.tau))
 
     def state(self, beta):
-        """Return the middle-half imbalance and its (unwrapped) split residual."""
-        theta = ordered_phases(unitary_phases(self.C(beta)), self.determinant_phase(beta))
-        quarter = self.D // 4
+        """Return the middle-half imbalance P(beta) and its (unwrapped) split residual."""
+        nu = ordered_phases(unitary_phases(self.C(beta)), self.determinant_phase(beta))
+        quarter = self.d // 4
         # Pairwise summation avoids subtracting two large total phase sums.
-        middle = theta[quarter:3 * quarter]
-        outer = np.r_[theta[:quarter], theta[3 * quarter:]]
+        middle = nu[quarter:3 * quarter]
+        outer = np.r_[nu[:quarter], nu[3 * quarter:]]
         imbalance = float(np.sum(middle - outer) / 2)
         return imbalance, 2 * abs(imbalance)
 
@@ -206,10 +206,10 @@ def _direct_C(X, Y):
 
 def find_pivot(U, n):
     """Return (alpha, beta), checking simple balanced pivots before reporting degeneracy."""
-    D = 2 ** (n - 1)
-    if n < 3 or U.shape != (2 * D, 2 * D):
+    d = 2 ** (n - 1)
+    if n < 3 or U.shape != (2 * d, 2 * d):
         raise ValueError("A pivot requires a 2**n square unitary with n >= 3")
-    X, Y = U[:D, :D], U[:D, D:]
+    X, Y = U[:d, :d], U[:d, d:]
     C0 = _direct_C(X, Y)
     if cyclic_split(unitary_phases(C0))[1] <= ROOT_TOL:
         return 0.0, 0.0
@@ -229,25 +229,25 @@ def demux_double_fold(C):
     """Recover a contiguous split from a pivot root and zero its Gray-code angle.
 
     A PivotPath root guarantees such a split; arbitrary balanced spectra need
-    not have a contiguous solution. Only D/2 circular windows are checked.
+    not have a contiguous solution. Only d/2 circular windows are checked.
     """
-    D = len(C)
-    V, theta, W = demultiplex(np.eye(D, dtype=complex), C)
+    d = len(C)
+    V, theta, W = demultiplex(np.eye(d, dtype=complex), C)
     S, residual = cyclic_split(theta)
     if residual > TOL:
         raise ValueError(f"C has no balanced contiguous split (residual {residual:.2e})")
-    mask = np.ones(D, dtype=bool)
+    mask = np.ones(d, dtype=bool)
     mask[S] = False
     perm = np.r_[S, np.flatnonzero(mask)]
     V, theta, W = V[:, perm], theta[perm], W[perm, :]
 
     # The relevant Walsh row is +1 on the first half, -1 on the second half.
-    difference = theta[:D // 2].sum() - theta[D // 2:].sum()
+    difference = theta[:d // 2].sum() - theta[d // 2:].sum()
     turns = int(round(difference / (2 * np.pi)))
     theta[0] -= 2 * np.pi * turns
     if turns % 2:
         W[0] *= -1
-    angle = (theta[:D // 2].sum() - theta[D // 2:].sum()) / D
+    angle = (theta[:d // 2].sum() - theta[d // 2:].sum()) / d
     if abs(angle) > TOL:
         raise RuntimeError(f"Branch adjustment did not zero the Gray-code angle ({angle:.2e})")
     return V, theta, W
@@ -255,9 +255,9 @@ def demux_double_fold(C):
 
 def apply_pivot(U, u):
     """Right-multiply by u on the top qubit, without forming a dense embedded gate."""
-    D = len(U) // 2
-    return np.concatenate((u[0, 0] * U[:, :D] + u[1, 0] * U[:, D:],
-                           u[0, 1] * U[:, :D] + u[1, 1] * U[:, D:]), axis=1)
+    d = len(U) // 2
+    return np.concatenate((u[0, 0] * U[:, :d] + u[1, 0] * U[:, d:],
+                           u[0, 1] * U[:, :d] + u[1, 1] * U[:, d:]), axis=1)
 
 
 def synth(U, n, want_diag=False):

@@ -41,14 +41,14 @@ def c_factor(U, n, alpha, beta):
 
 
 def normalized_phases(C, ref_mu=None, ref_det_phase=None):
-    """Eigenphases of C / det(C)^(1/D). Given a reference point (ref_mu, ref_det_phase), the root
+    """Eigenphases of C / det(C)^(1/d). Given a reference point (ref_mu, ref_det_phase), the root
     and the eigenvalue order are tracked from it so that they vary continuously along a path."""
-    D = C.shape[0]
+    d = C.shape[0]
     lam = np.linalg.eigvals(C)
     det_phase = np.angle(np.prod(lam))
     if ref_det_phase is not None:
         det_phase = ref_det_phase + wrap(det_phase - ref_det_phase)
-    mu = np.angle(lam * np.exp(-1j * det_phase / D))
+    mu = np.angle(lam * np.exp(-1j * det_phase / d))
     if ref_mu is not None:                       # match each reference eigenvalue to its nearest
         order = []
         for pm in ref_mu:
@@ -94,27 +94,27 @@ def walsh_angles(thetas):
 
 
 def demux_double_fold(C):
-    """Demultiplex I ⊕ C = (I ⊗ V) Δ(θ) (I ⊗ W) so that the last Gray-code angle is exactly 0.
+    """Demultiplex I ⊕ C = (I ⊗ V) D(θ) (I ⊗ W) so that the last Gray-code angle is exactly 0.
 
     The eigenvalues of a balanced split S go to the states whose top control bit is 0, and 2π
-    branch shifts (each flipping the sign of one row of W) remove the remaining multiple of 2π/D."""
-    D = C.shape[0]
-    V, theta, W = demultiplex(np.eye(D, dtype=complex), C)
+    branch shifts (each flipping the sign of one row of W) remove the remaining multiple of 2π/d."""
+    d = C.shape[0]
+    V, theta, W = demultiplex(np.eye(d, dtype=complex), C)
     residual, S, Sc = min((abs(wrap(theta[list(S)].sum() - theta[list(Sc)].sum())), S, Sc)
-                          for S, Sc in half_splits(D))
+                          for S, Sc in half_splits(d))
     if residual > TOL:
         raise ValueError(f"C has no balanced split (residual {residual:.1e})")
 
-    top_bit = D // 2
-    slots0 = [j for j in range(D) if not j & top_bit]
-    slots1 = [j for j in range(D) if j & top_bit]
-    perm = np.empty(D, dtype=int)
+    top_bit = d // 2
+    slots0 = [j for j in range(d) if not j & top_bit]
+    slots1 = [j for j in range(d) if j & top_bit]
+    perm = np.empty(d, dtype=int)
     perm[slots0], perm[slots1] = S, Sc
     V, theta, W = V[:, perm], theta[perm], W[perm, :]
 
-    # φ_last = (Σ_slots0 θ − Σ_slots1 θ)/D, so each 2π shift on a slots0 entry moves it by 2π/D
-    steps = int(round(walsh_angles(theta)[-1] / (2 * np.pi / D)))
-    flips = np.ones(D)
+    # φ_last = (Σ_slots0 θ − Σ_slots1 θ)/d, so each 2π shift on a slots0 entry moves it by 2π/d
+    steps = int(round(walsh_angles(theta)[-1] / (2 * np.pi / d)))
+    flips = np.ones(d)
     for i in range(abs(steps)):
         j = slots0[i % len(slots0)]
         theta[j] -= np.sign(steps) * 2 * np.pi

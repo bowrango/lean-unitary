@@ -6,7 +6,7 @@ Theorem (sketch, see README §10): let X, Y be the top-row blocks of U (top qubi
       satisfies C(π) = C(0)^{-1}, and the continuous fold function changes sign, so it has a zero β*.
 At β*, the eigenphases of C split into two halves with equal sums mod 2π: the C-side multiplexor
 folds TWO CNOTs into the middle factor instead of one.
-Here the fold function is g(β) = Π_splits sin((Σ_S μ − Σ_{S^c} μ)/2) with eigenphases of C·det(C)^(-1/D)
+Here the fold function is g(β) = Π_splits sin((Σ_S μ − Σ_{S^c} μ)/2) with eigenphases of C·det(C)^(-1/d)
 tracked continuously; we locate a sign change by scanning and refine by bisection."""
 import numpy as np
 from core import block_zxz, embed, ry, rz
@@ -16,8 +16,8 @@ def top_gate(alpha, beta):
     return rz(alpha) @ ry(beta)          # applied as U @ embed(top_gate, [n-1])
 
 def choose_alpha(U, n):
-    D = 2 ** (n - 1)
-    X, Y = U[:D, :D], U[:D, D:]         # rows/cols with top qubit = 0 / 1 (top = most significant)
+    d = 2 ** (n - 1)
+    X, Y = U[:d, :d], U[:d, d:]         # rows/cols with top qubit = 0 / 1 (top = most significant)
     tau = np.linalg.eigvals(np.linalg.solve(X, Y))
     for alpha in np.linspace(0, 2 * np.pi, 721)[:-1]:
         # u = Rz(α) at input: X -> e^{-iα/2} X, Y -> e^{iα/2} Y, so τ -> e^{iα} τ
@@ -27,8 +27,8 @@ def choose_alpha(U, n):
 
 class FoldFn:
     def __init__(self, U, n, alpha):
-        self.U, self.n, self.alpha, self.D = U, n, alpha, 2 ** (n - 1)
-        self.splits = half_splits(self.D)
+        self.U, self.n, self.alpha, self.d = U, n, alpha, 2 ** (n - 1)
+        self.splits = half_splits(self.d)
 
     def C(self, beta):
         return block_zxz(self.U @ embed(top_gate(self.alpha, beta), [self.n - 1], self.n))[3]
@@ -43,22 +43,22 @@ class FoldFn:
 def scan_and_bisect(U, n, nb=400):
     alpha = choose_alpha(U, n)
     F = FoldFn(U, n, alpha)
-    D = F.D
+    d = F.d
     betas = np.linspace(0, np.pi, nb + 1)
-    # continuous tracking: det phase unwrapped; eigenphases of C1 = C / det^(1/D) matched by nearest
+    # continuous tracking: det phase unwrapped; eigenphases of C1 = C / det^(1/d) matched by nearest
     prev_a, prev_mu, vals, mus = None, None, [], []
     for b in betas:
         lam, a = F.g(b)
         if prev_a is not None:
             a = prev_a + (a - prev_a + np.pi) % (2 * np.pi) - np.pi
         prev_a = a
-        l1 = lam * np.exp(-1j * a / D)
+        l1 = lam * np.exp(-1j * a / d)
         mu = np.angle(l1)
         if prev_mu is not None:     # match eigenvalues to previous ordering, unwrap phases
             order = []
             for pm in prev_mu:
-                d = np.abs(np.exp(1j * mu) - np.exp(1j * pm)); d[order] = np.inf
-                order.append(int(np.argmin(d)))
+                dist = np.abs(np.exp(1j * mu) - np.exp(1j * pm)); dist[order] = np.inf
+                order.append(int(np.argmin(dist)))
             mu = mu[order]
             mu = prev_mu + (mu - prev_mu + np.pi) % (2 * np.pi) - np.pi
         prev_mu = mu

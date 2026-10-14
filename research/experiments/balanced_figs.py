@@ -1,6 +1,6 @@
 r"""Generate every figure of ../supplementary.tex (balanced-split pivot, paper Sec. II.A-II.C).
 
-Runs the construction of foldzxz_opt.py on one Haar-random four-qubit target (D = 8), samples the
+Runs the construction of foldzxz_opt.py on one Haar-random four-qubit target (d = 8), samples the
 quantities each figure shows, and writes one PDF per figure to ../figures/ at its printed size.
 Needs numpy, scipy and matplotlib, and a LaTeX installation for text rendering.
 
@@ -20,7 +20,7 @@ from core import random_unitary
 from foldzxz_opt import PivotPath, ordered_phases, unitary_phases
 
 FIG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'figures')
-N_QUBITS, SEED = 4, 2                 # D = 2^(n-1) = 8 eigenphases
+N_QUBITS, SEED = 4, 2                 # d = 2^(n-1) = 8 eigenphases
 BENCH_NS = range(3, 11)               # register sizes in the Block-ZXZ comparison
 
 
@@ -32,16 +32,16 @@ def unit(z):
 
 def collect(n=N_QUBITS, seed=SEED):
     """Sample every quantity drawn in the figures for one Haar-random target."""
-    D = 2 ** (n - 1)
+    d = 2 ** (n - 1)
     U = random_unitary(2 ** n, np.random.default_rng(seed))
     path = PivotPath(U, n)
-    X, Y = U[:D, :D], U[:D, D:]
+    X, Y = U[:d, :d], U[:d, d:]
     rho = np.linalg.eigvals(np.linalg.solve(X, Y))
     alpha = path.alpha
-    S = list(range(D // 4, 3 * D // 4))   # middle half of the sorted list
+    S = list(range(d // 4, 3 * d // 4))   # middle half of the sorted list
 
     def lift(beta):
-        """Sorted eigenphase lifts nu_j(beta), pinned to the total phase sigma(beta)."""
+        """Lifted eigenphases nu_k(beta), pinned to the total phase sigma(beta)."""
         mu = unitary_phases(path.C(beta))
         return ordered_phases(mu, path.determinant_phase(beta))
 
@@ -49,19 +49,19 @@ def collect(n=N_QUBITS, seed=SEED):
         nu = lift(beta)
         return nu[S].sum() - np.delete(nu, S).sum()
 
-    d = {'alpha': alpha}
-    d['tau'] = [unit(t) for t in np.exp(1j * alpha) * rho]
-    d['rho'] = [unit(r) for r in rho]
+    data = {'alpha': alpha}
+    data['tau'] = [unit(t) for t in np.exp(1j * alpha) * rho]
+    data['rho'] = [unit(r) for r in rho]
     A = np.linspace(0, 2 * np.pi, 1441)
-    d['N'] = [(float(a), int(np.sum((np.exp(1j * a) * rho).imag > 0))) for a in A]
+    data['N_plus'] = [(float(a), int(np.sum((np.exp(1j * a) * rho).imag > 0))) for a in A]
     crossings = np.mod(-np.angle(rho), np.pi)
-    d['cross'] = sorted(np.r_[crossings, crossings + np.pi].tolist())
+    data['cross'] = sorted(np.r_[crossings, crossings + np.pi].tolist())
 
     B = np.linspace(0, np.pi, 241)
-    d['sigma'] = [(float(b), float(path.determinant_phase(b))) for b in B]
+    data['sigma'] = [(float(b), float(path.determinant_phase(b))) for b in B]
     L = np.array([lift(b) for b in B])
-    d['nu'] = [[(float(b), float(L[i, j])) for i, b in enumerate(B)] for j in range(D)]
-    d['P'] = [(float(b), float(imbalance(b))) for b in B]
+    data['nu'] = [[(float(b), float(L[i, k])) for i, b in enumerate(B)] for k in range(d)]
+    data['P'] = [(float(b), float(imbalance(b))) for b in B]
 
     # record the trials of the code's own root search (Brent's method)
     trials, state = [], path.state
@@ -69,14 +69,14 @@ def collect(n=N_QUBITS, seed=SEED):
     bstar = path.find_beta()
     path.state = state
     inner = [b for b in trials[:-1] if 0 < b < np.pi]   # interior trials, before the final check
-    d['iterates'] = [(k + 1, b, imbalance(b)) for k, b in enumerate(inner)]
-    d['bstar'] = bstar
-    d['nustar'] = lift(bstar).tolist()
-    d['C0'] = unitary_phases(path.C(0.0)).tolist()
-    d['Cpi'] = unitary_phases(path.C(np.pi)).tolist()
-    nu = np.array(d['nustar'])
-    d['halfsums'] = (nu[S].sum(), np.delete(nu, S).sum())
-    return d
+    data['iterates'] = [(k + 1, b, imbalance(b)) for k, b in enumerate(inner)]
+    data['bstar'] = bstar
+    data['nustar'] = lift(bstar).tolist()
+    data['C0'] = unitary_phases(path.C(0.0)).tolist()
+    data['Cpi'] = unitary_phases(path.C(np.pi)).tolist()
+    nu = np.array(data['nustar'])
+    data['halfsums'] = (nu[S].sum(), np.delete(nu, S).sum())
+    return data
 
 
 
@@ -129,35 +129,35 @@ def fig_pipeline():
         ax.add_patch(FancyArrowPatch(p, q, arrowstyle="-|>", mutation_scale=8, color=color, lw=0.9))
 
     xs, y, w = [1.3, 4.05, 6.8, 9.55, 12.3], 2.7, 2.45
-    labels = [r"pivot\\$g=R_z(\alpha)$\\$\times R_y(\beta)$", r"top-row\\blocks $X_g,Y_g$\\(Eq.~8)",
-              r"multiplexor\\matrix $C(\beta)$\\(Eq.~9)", r"angles $\bm\theta$\\$=$\\eigenphases",
-              r"$\varphi=\tfrac1D\mathbf h^{\mathsf T}\bm\theta$\\$=0$\,?"]
+    labels = [r"pivot\\$g=R_z(\alpha)$\\$\times R_y(\beta)$", r"top-row\\blocks $X_g,Y_g$\\(Eq.~4)",
+              r"multiplexor\\matrix $C(\beta)$\\(Eq.~6)", r"angles $\bm\theta$\\$=$\\eigenphases",
+              r"$\varphi=\tfrac1d\mathbf h^{\mathsf T}\bm\theta$\\$=0$\,?"]
     for x, text in zip(xs, labels):
         box(x, y, w, 1.3, r"\shortstack{" + text + "}")
     for x0, x1 in zip(xs[:-1], xs[1:]):
         arrow((x0 + w / 2, y), (x1 - w / 2, y))
-    box(4.05, 0.75, 3.9, 1.0, r"\shortstack{\textbf{choose $\alpha$}: sort the $D$ crossing\\angles, "
-                               r"pick a count-$D/2$ interval}", search=True)
-    box(9.55, 0.75, 3.2, 1.0, r"\shortstack{\textbf{choose $\beta$}: bisect the\\imbalance $P(\beta)$}",
+    box(4.05, 0.75, 3.9, 1.0, r"\shortstack{\textbf{choose $\alpha$}: sort the $d$ crossing\\angles, "
+                               r"pick an $N_+=d/2$ interval}", search=True)
+    box(9.55, 0.75, 3.2, 1.0, r"\shortstack{\textbf{choose $\beta$}: root search\\on the imbalance $P(\beta)$}",
         search=True)
     arrow((2.9, 1.25), (1.6, 2.03), MID)
     arrow((8.4, 1.25), (2.0, 2.03), MID)
     return fig
 
 
-def fig_endpoints(d):
+def fig_endpoints(data):
     fig, ax = plt.subplots(figsize=(3.3, 2.3))
     unit_circle(ax)
     ax.axhline(0, color="0.8", lw=0.6, zorder=0)
     ax.axvline(0, color="0.8", lw=0.6, zorder=0)
-    c0, cpi = np.exp(1j * np.array(d['C0'])), np.exp(1j * np.array(d['Cpi']))
+    c0, cpi = np.exp(1j * np.array(data['C0'])), np.exp(1j * np.array(data['Cpi']))
     ax.plot(c0.real, c0.imag, "o", color="k", ms=4, label=r"eigenvalues of $C(0)$")
     ax.plot(cpi.real, cpi.imag, "o", mfc="none", mec=MID, mew=1.1, ms=7, label=r"eigenvalues of $C(\pi)$")
     ax.legend(loc="upper left", bbox_to_anchor=(0.88, 1.0), frameon=False, fontsize=8)
     return fig
 
 
-def fig_alpha_tau(d, D):
+def fig_alpha_tau(data, d):
     fig, ax = plt.subplots(figsize=(2.0, 2.15))
     unit_circle(ax, 1.3)
     ax.set_ylim(-1.5, 1.5)
@@ -165,39 +165,39 @@ def fig_alpha_tau(d, D):
     ax.axhspan(-1.5, 0, color=OUT, alpha=0.07, lw=0)
     ax.axhline(0, color=RED, lw=1.6)
     ax.axvline(0, color="0.8", lw=0.6)
-    rx, ry = unpack(d['rho'])
+    rx, ry = unpack(data['rho'])
     ax.plot(rx, ry, "o", mfc="none", mec=GREY, ms=4)
-    for x, y in d['tau']:
+    for x, y in data['tau']:
         ax.plot(x, y, "o", color=MID if y > 0 else OUT, ms=4.5)
-    ax.text(0, 1.3, rf"$N=D/2={D // 2}$ above", ha="center", va="center", fontsize=7, color=MID)
-    ax.text(0, -1.3, rf"${D // 2}$ below", ha="center", va="center", fontsize=7, color=OUT)
+    ax.text(0, 1.3, rf"$N_+=d/2={d // 2}$ above", ha="center", va="center", fontsize=7, color=MID)
+    ax.text(0, -1.3, rf"${d // 2}$ below", ha="center", va="center", fontsize=7, color=OUT)
     return fig
 
 
-def fig_alpha_count(d, D):
+def fig_alpha_count(data, d):
     fig, ax = plt.subplots(figsize=(2.25, 1.85))
-    a, n = unpack(d['N'])
-    upper = n == D // 2
-    ax.fill_between(a, 0, D, where=upper, color=MID, alpha=0.15, lw=0, step="post")
+    a, n = unpack(data['N_plus'])
+    upper = n == d // 2
+    ax.fill_between(a, 0, d, where=upper, color=MID, alpha=0.15, lw=0, step="post")
     ax.step(a, n, where="post", color="k", lw=1.0)
-    ax.axhline(D // 2, color=MID, ls="--", lw=0.8)
-    for c in d['cross']:
+    ax.axhline(d // 2, color=MID, ls="--", lw=0.8)
+    for c in data['cross']:
         ax.plot([c, c], [0, 0.35], color="0.45", lw=0.6)
-    ax.axvline(d['alpha'], color="k", lw=1.4)
-    ax.text(d['alpha'], D + 0.15, r"$\alpha^\ast$", ha="center", va="bottom", fontsize=8)
+    ax.axvline(data['alpha'], color="k", lw=1.4)
+    ax.text(data['alpha'], d + 0.15, r"$\alpha^\ast$", ha="center", va="bottom", fontsize=8)
     ax.set_xlim(0, 2 * np.pi)
-    ax.set_ylim(0, D)
+    ax.set_ylim(0, d)
     ax.set_xticks([0, np.pi, 2 * np.pi], [r"$0$", r"$\pi$", r"$2\pi$"])
-    ax.set_yticks([0, D // 2, D])
+    ax.set_yticks([0, d // 2, d])
     ax.set_xlabel(r"$\alpha$")
-    ax.set_ylabel(r"$N(\alpha)$")
+    ax.set_ylabel(r"$N_+(\alpha)$")
     fig.tight_layout(pad=0.2)
     return fig
 
 
-def fig_alpha_sigma(d):
+def fig_alpha_sigma(data):
     fig, ax = plt.subplots(figsize=(2.25, 1.85))
-    b, s = unpack(d['sigma'])
+    b, s = unpack(data['sigma'])
     ax.axhline(0, color="0.7", ls=":", lw=0.8)
     ax.plot(b, s, color="k")
     ax.plot([0, np.pi], [s[0], s[-1]], "o", color="k", ms=3)
@@ -206,49 +206,49 @@ def fig_alpha_sigma(d):
     return fig
 
 
-def fig_beta_lifts(d, S):
+def fig_beta_lifts(data, S):
     fig, ax = plt.subplots(figsize=(3.15, 2.5))
-    for j, curve in enumerate(d['nu']):
+    for k, curve in enumerate(data['nu']):
         b, v = unpack(curve)
-        ax.plot(b, v, color=MID if j in S else OUT)
-    ax.axvline(d['bstar'], color="k", lw=1.4)
-    ax.text(d['bstar'], 3.5, r"$\beta^\ast$", ha="center", va="bottom", fontsize=8)
+        ax.plot(b, v, color=MID if k in S else OUT)
+    ax.axvline(data['bstar'], color="k", lw=1.4)
+    ax.text(data['bstar'], 3.5, r"$\beta^\ast$", ha="center", va="bottom", fontsize=8)
     ax.set_ylim(-3.4, 3.4)
-    beta_axis(ax, r"lifted eigenphases $\nu_j(\beta)$")
+    beta_axis(ax, r"lifted eigenphases $\nu_k(\beta)$")
     fig.tight_layout(pad=0.2)
     return fig
 
 
-def fig_beta_imbalance(d, shown=6):
+def fig_beta_imbalance(data, shown=6):
     fig, ax = plt.subplots(figsize=(3.15, 2.5))
-    b, p = unpack(d['P'])
+    b, p = unpack(data['P'])
     ax.axhline(0, color="0.7", ls=":", lw=0.8)
     ax.plot(b, p, color="k")
-    for k, m, v in d['iterates'][:shown]:
+    for k, m, v in data['iterates'][:shown]:
         ax.plot(m, v, "o", color="k", ms=3)
         ax.annotate(str(k), (m, v), textcoords="offset points", xytext=(-4, 4), fontsize=7)
-    ax.axvline(d['bstar'], color="k", lw=1.4)
+    ax.axvline(data['bstar'], color="k", lw=1.4)
     beta_axis(ax, r"imbalance $P(\beta)$")
-    ax.text(d['bstar'], ax.get_ylim()[1], r"$\beta^\ast$", ha="center", va="bottom", fontsize=8)
+    ax.text(data['bstar'], ax.get_ylim()[1], r"$\beta^\ast$", ha="center", va="bottom", fontsize=8)
     fig.tight_layout(pad=0.2)
     return fig
 
 
-def fig_split(d, S, D):
+def fig_split(data, S, d):
     fig, ax = plt.subplots(figsize=(4.6, 2.1))
-    nu = np.array(d['nustar'])
-    rest = [k for k in range(D) if k not in S]
-    half = D // 2
+    nu = np.array(data['nustar'])
+    rest = [k for k in range(d) if k not in S]
+    half = d // 2
     ax.bar(range(half), nu[S], width=0.45, color=MID, alpha=0.75, ec=MID)
-    ax.bar(range(half, D), nu[rest], width=0.45, color=OUT, alpha=0.75, ec=OUT)
+    ax.bar(range(half, d), nu[rest], width=0.45, color=OUT, alpha=0.75, ec=OUT)
     ax.axhline(0, color="0.5", lw=0.6)
     ax.axvline(half - 0.5, color="0.6", lw=0.7)
-    s_mid, s_out = d['halfsums']
+    s_mid, s_out = data['halfsums']
     ax.text((half - 1) / 2, 2.75, rf"$\sum={s_mid:.4f}$", ha="center", color=MID, fontsize=8.5)
     ax.text(half + (half - 1) / 2, -3.05, rf"$\sum={s_out:.4f}$", ha="center", color=OUT, fontsize=8.5)
-    ax.set_xticks(range(D))
+    ax.set_xticks(range(d))
     ax.set_ylim(-3.4, 3.4)
-    ax.set_xlim(-0.7, D - 0.3)
+    ax.set_xlim(-0.7, d - 0.3)
     ax.set_xlabel(r"basis state $j$ of the lower register", labelpad=14)
     ax.set_ylabel(r"angle $\theta_j$")
     sec = ax.secondary_xaxis(-0.11)
@@ -271,7 +271,7 @@ def fig_benchmark():
     # On a log axis the two counts differ by a few percent and coincide; dividing by 4^n shows
     # the leading coefficients 22/48 and 21/48 that the counts approach.
     for key, color, a, label in [('zxz_cx', "0.35", 22 / 48, "Block-ZXZ"),
-                                 ('ours_cx', MID, 21 / 48, "ours")]:
+                                 ('ours_cx', MID, 21 / 48, "improved")]:
         ax.plot(n, [r[key] / 4.0 ** r['n'] for r in rows], "o-", color=color, ms=4, label=label)
         ax.axhline(a, color=color, ls=":", lw=0.9)
     bound = [math.ceil((4 ** k - 3 * k - 1) / 4) / 4.0 ** k for k in n]   # parameter count
@@ -284,7 +284,7 @@ def fig_benchmark():
     ax.set_title(r"(a) CX count", fontsize=9)
 
     tx.plot(n, [r['zxz_time'] for r in rows], "s-", color="0.35", ms=4, label="Block-ZXZ")
-    tx.plot(n, [r['ours_time'] for r in rows], "s-", color=MID, ms=4, label="ours")
+    tx.plot(n, [r['ours_time'] for r in rows], "s-", color=MID, ms=4, label="improved")
     tx.set_yscale("log")
     tx.set_xlabel(r"qubits $n$")
     tx.set_ylabel("synthesis time (s)")
@@ -296,18 +296,18 @@ def fig_benchmark():
 
 
 def main():
-    d = collect()
-    D = 2 ** (N_QUBITS - 1)
-    S = list(range(D // 4, 3 * D // 4))
+    data = collect()
+    d = 2 ** (N_QUBITS - 1)
+    S = list(range(d // 4, 3 * d // 4))
     figures = {
         'bal_pipeline': fig_pipeline(),
-        'bal_endpoints': fig_endpoints(d),
-        'bal_alpha_tau': fig_alpha_tau(d, D),
-        'bal_alpha_count': fig_alpha_count(d, D),
-        'bal_alpha_sigma': fig_alpha_sigma(d),
-        'bal_beta_lifts': fig_beta_lifts(d, S),
-        'bal_beta_imbalance': fig_beta_imbalance(d),
-        'bal_split': fig_split(d, S, D),
+        'bal_endpoints': fig_endpoints(data),
+        'bal_alpha_tau': fig_alpha_tau(data, d),
+        'bal_alpha_count': fig_alpha_count(data, d),
+        'bal_alpha_sigma': fig_alpha_sigma(data),
+        'bal_beta_lifts': fig_beta_lifts(data, S),
+        'bal_beta_imbalance': fig_beta_imbalance(data),
+        'bal_split': fig_split(data, S, d),
         'bal_benchmark': fig_benchmark(),
     }
     os.makedirs(FIG_DIR, exist_ok=True)

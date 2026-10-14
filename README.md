@@ -2,7 +2,7 @@
 
 Machine-checked synthesis of arbitrary `n`-qubit unitaries with fewer CX gates than Block-ZXZ.
 
-The method (`submission/decomposition.tex`) inserts a single-qubit **pivot gate**
+The method ([paper](submission/)) inserts a single-qubit **pivot gate**
 `g = R_z(α) R_y(β)` on the top qubit at each step of the Block-ZXZ recursion,
 
 $$U=(\ast)\,\big(I\oplus C(g)\big)\,(g^\dagger\otimes I),$$
@@ -28,7 +28,7 @@ The project has three layers, each usable on its own:
 
 | Layer | Path | Role |
 | --- | --- | --- |
-| Paper | [`submission/`](submission/README.md) | The construction, existence argument and gate count (`decomposition.tex`), a self-contained implementation (`decomposition.py`), the benchmark, and the formalization diagram |
+| Paper | [`submission/`](submission/README.md) | The paper (construction, existence argument and gate count), a self-contained implementation (`decomposition.py`), the benchmark, and the formalization diagram |
 | Numerics | [`research/`](research/README.md) | Exploratory Python experiments, the implementation-and-experiments supplement, and an explainer video. Plain NumPy/SciPy with no dependency on Lean |
 | Formalization | [`LeanUnitary/`](LeanUnitary/README.md) | Lean 4 proofs of the pivot construction against a fixed circuit model, on Mathlib alone |
 

@@ -1,6 +1,6 @@
 # LeanUnitary
 
-The Lean 4 formalization of the pivot decomposition (`../submission/decomposition.tex`), built on
+The Lean 4 formalization of the pivot decomposition ([paper](../submission/)), built on
 Mathlib. The circuit model and the synthesis statements are fixed in `Spec.lean`; the pivot
 construction is proved in `Pivot/`.
 

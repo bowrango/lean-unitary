@@ -3,7 +3,6 @@
 \usepackage{amsmath,amssymb,amsthm}
 \usepackage{booktabs}
 \usepackage{graphicx}
-\usepackage{bm}
 \usepackage{tikz}
 \usetikzlibrary{quantikz2,calc}
 \colorlet{cnew}{blue!60!cyan!80!black}
@@ -17,11 +16,7 @@
 \renewcommand{\thesection}{\Roman{section}}
 \renewcommand{\thesubsection}{\thesection.\Alph{subsection}}
 
-\newcommand{\CX}{\mathrm{CX}}
-\newcommand{\CZ}{\mathrm{CZ}}
-\newcommand{\Pf}{\operatorname{Pf}}
-
-\title{An improved algorithm for arbitrary unitary synthesis}
+\title{An improvement for exact unitary decomposition}
 \author{Matt Bowring\\[2pt]
 {\normalsize Purdue University}\\[2pt]
 {\normalsize\href{mailto:mbowring@purdue.edu}{\texttt{mbowring@purdue.edu}}}}
@@ -31,8 +26,8 @@
 \maketitle
 
 \begin{abstract}
-This paper presents an improved quantum gate decomposition method that results in more optimal quantum circuits.
-The current best-known exact method requires $O(\frac{22}{48} 4^n)$ two-qubit gates for an arbitrary $n$-qubit unitary. We reduce this count to $O(\frac{21}{48} 4^n)$ by introducing a parameterized single-qubit \emph{pivot} gate that removes a two-qubit gate at each recursive step. Unlike conventional gradient-based approaches used to optimize gate parameters, we provide a principled method and show sufficient parameters always exist. We verify our decomposition with numerical experiments and discuss the tradeoffs and practicality.
+This paper presents an improved quantum gate decomposition that results in smaller quantum circuits.
+The current best-known exact decomposition requires $O(\frac{22}{48} 4^n)$ two-qubit gates for an arbitrary $n$-qubit unitary. I reduce this count to $O(\frac{21}{48} 4^n)$ by introducing a parameterized single-qubit \emph{pivot} gate that removes a two-qubit gate at each recursive step. The gate parameters are found by a one-dimensional root search rather than conventional gradient-based optimization. Their existence for generic unitaries is formally verified in \texttt{Lean} and demonstrated numerically on random instances. The practicality and potential improvements of the proposed decomposition are discussed.
 \end{abstract}
 
 %==========================================================================================
@@ -40,19 +35,16 @@ The current best-known exact method requires $O(\frac{22}{48} 4^n)$ two-qubit ga
 
 \subsection{The synthesis problem}
 
-To run a quantum algorithm on hardware, its unitary operations must be translated into the native gate set of the device, a task known as gate decomposition or synthesis. The usual gate set is $\{\CX\}\cup U(2)$, where $\CX$ is the two-qubit controlled-NOT. A parameter count shows that an exact decomposition of a generic $n$-qubit unitary
-needs at least~\cite{smb}
+To run a quantum program on hardware, its unitary operations must be translated into the native gate set of the device, a task known as gate decomposition or synthesis. Given a target unitary matrix, the task is therefore to produce a quantum circuit using as few gates as possible. The common native gate set is $\{\mathrm{CX}\}\cup U(2)$, where CX is the two-qubit controlled-X (CNOT) gate and $U(2)$ is the group of single-qubit unitaries. A parameter count shows that an exact decomposition of a generic $n$-qubit unitary needs at least~\cite{smb2q}
 \[
 c_{\min}(n)\ \ge\ \big\lceil \tfrac14(4^n-3n-1)\big\rceil
 \]
-CX gates. These gates are typically the bottleneck, since their connectivity constraints and error rates are a dominating factor over single-qubit gates.
+CX gates. These two-qubit gates are typically the bottleneck for quantum processors due to their connectivity constraints and dominant error rates.
 
 \subsection{Existing work}
 
-The current approaches either provide an analytical decomposition or rely on numerical optimization.
-The best-known analytical methods~\cite{smb,zxz} follow the recursive pattern in Fig.~\ref{fig:node}. These have a direct algebraic formula but produce sub-optimal circuits, whereas numerical approaches can reach near-optimal circuits at the cost of intensive gradient-based search (see, e.g.,~\cite{brickwall,squander}). This work focuses on analytical decompositions which are more generalizable.
- 
-The quantum Shannon decomposition (QSD)~\cite{smb} introduced the recursive pattern using three multiplexed rotations (``multiplexors'') between four sub-unitaries, requiring $O(\frac{23}{48} 4^n)$ CX gates. The multiplexor \cite{mottonen} applies a different single-qubit rotation to a target qubit for each basis state of the control qubits. At each recursive step, it uses $D=2^{n-1}$ CX gates for the bottom $n-1$ control qubits and dominates the number of overall CX gates. The QSD was further improved using the Block-ZXZ decomposition~\cite{zxz} which modified the central multiplexor, resulting in the current best-known count $O(\frac{22}{48} 4^n)$ for exact decomposition.
+The current approaches either provide an analytical decomposition or rely on numerical optimization of gate parameters.
+The best-known analytical methods~\cite{smb,zxz} follow the recursive pattern in Fig.~\ref{fig:node}. These have a direct algebraic formula but produce suboptimal circuits, whereas numerical approaches can reach near-optimal circuits at the cost of intensive gradient-based search (see, e.g.,~\cite{baqc,squander}). The quantum Shannon decomposition (QSD)~\cite{smb} introduced the recursive pattern using three multiplexed rotations (multiplexors) between four sub-unitaries, requiring $O(\frac{23}{48} 4^n)$ CX gates. At each step, the multiplexors \cite{mottonen} apply a different rotation to the top qubit for each basis state of the control qubits, which effectively factor out the top qubit. Each multiplexor uses $d=2^{n-1}$ CX gates for the bottom $n-1$ control qubits and dominates the overall CX count. The QSD was further improved using the Block-ZXZ decomposition~\cite{zxz}, which modified the central multiplexor to save one CX gate at each step, resulting in the current best-known count $O(\frac{22}{48} 4^n)$ for exact decomposition.
 
 \begin{figure}[t]
 \centering
@@ -70,14 +62,14 @@ The quantum Shannon decomposition (QSD)~\cite{smb} introduced the recursive patt
 \draw[cnew, dotted, thick, rounded corners=3pt]
   ($(frz.north west)+(-\p,\p)$) rectangle ($(frz.east|-fmc.south)+(\p,-\p)$);
 \end{tikzpicture}
-\caption{The template for decomposing a target $n$-qubit unitary $U$. We introduce a single-qubit pivot gate
-$g^\dagger$ (blue fill) which allows the left-side multiplexor (blue dots) to use one fewer CX gate by merging it into the central multiplexor. This template is applied recursively to the four generic $(n-1)$-qubit unitaries (blank boxes), leading to a reduction of $(4^{n-2}-1)/3$ CX gates.}
+\caption{The template for decomposing a target $n$-qubit unitary $U$. A single-qubit pivot gate
+$g^\dagger$ (blue fill) allows the left-side multiplexor (blue dots) to use one fewer CX gate by merging it into the central multiplexor. This template is applied recursively to the four generic $(n-1)$-qubit unitaries (blank boxes), leading to a reduction of $(4^{n-2}-1)/3$ CX gates relative to Block-ZXZ.}
 \label{fig:node}
 \end{figure}
 
-\subsection{Our contribution}
+\subsection{Contribution}
 
-We adapt the current record-holding Block-ZXZ decomposition with a parameterized single-qubit gate at each recursive step, as depicted in Fig.~\ref{fig:node} with blue highlights. This gate is chosen such that an additional CX gate can be merged into the central multiplexor, similar to the original optimizations used by Block-ZXZ to improve QSD. However, as outlined in Section~\ref{sec:alg}, the gate parameters do require iterative search, unlike the direct commutative optimizations used by Block-ZXZ. To remedy this, we provide a principled method to obtain these parameters which is unlike the conventional gradient-based approaches. Section~\ref{sec:res} presents numerical experiments with a discussion of the practicality of our decomposition. Table~\ref{tab:counts} summarizes our main gate count result.
+I adapt the current best-known exact Block-ZXZ decomposition with a parameterized single-qubit gate at each recursive step, as depicted in Fig.~\ref{fig:node} with blue highlights. This gate is chosen such that an additional CX gate can be merged into the central multiplexor, similar to the original technique used by Block-ZXZ to improve QSD. However, as outlined in Sec.~\ref{sec:alg}, the gate parameters do require optimization instead of the direct commutation rules used by Block-ZXZ. I obtain these parameters with a one-dimensional root search rather than gradient-based optimization. Section~\ref{sec:res} presents numerical experiments and discusses the practicality and potential further improvements. Table~\ref{tab:counts} summarizes the main gate count result.
 
 \begin{table}[H]
 \centering
@@ -89,7 +81,7 @@ QSD~\cite{smb} & 0 & 3 & 20 & 100 & 444 & 1868 & $(23/48)\cdot4^n-(3/2)\cdot2^n+
 Block-ZXZ~\cite{zxz} & 0 & 3 & 19 & 95 & 423 & 1783 & $(22/48)\cdot4^n-(3/2)\cdot2^n+(5/3)$\\
 \textbf{This work} & \textbf{0} & \textbf{3} & \textbf{18} & \textbf{90} & \textbf{402} & \textbf{1698} & $\boldsymbol{(21/48)\cdot4^n-(3/2)\cdot2^n+2}$\\
 \midrule
-Theoretical lower bound & 0 & 3 & 14 & 61 & 252 & 1020 & $(1/4)\cdot(4^n-3n-1)$\\
+Theoretical lower bound & 0 & 3 & 14 & 61 & 252 & 1020 & $\lceil(4^n-3n-1)/4\rceil$\\
 \bottomrule
 \end{tabular}
 \caption{CX counts for exact synthesis of a generic $n$-qubit unitary.}
@@ -98,76 +90,79 @@ Theoretical lower bound & 0 & 3 & 14 & 61 & 252 & 1020 & $(1/4)\cdot(4^n-3n-1)$\
 
 
 %==========================================================================================
-\section{An improved algorithm}\label{sec:alg}
+\section{An improved decomposition}\label{sec:alg}
 
-Sec.~\ref{sec:fold} motivates the pivot gate, Sec.~\ref{sec:cond} states when the merge is possible,  
+The results of this section are verified in \texttt{Lean} and assume the standard gate decompositions. 
+While this paper omits the formal theorems and proofs, the \texttt{Lean} constructions are available~\cite{code}.
+Section~\ref{sec:fold} motivates the pivot gate, Sec.~\ref{sec:cond} states when the merge is possible,  
 Sec.~\ref{sec:exist} shows how to compute the parameters, and finally Sec.~\ref{sec:count} derives the main CX count result. 
 
 \begin{figure}[t]
 \centering
-\begin{tabular}{@{}l@{}}
-\textbf{(a) Block-ZXZ: one CX merged from the left}\\[2pt]
+\begin{tabular}{@{}c@{}}
 \begin{quantikz}[column sep=0.18cm, row sep={0.65cm,between origins}]
-\lstick{$t=q_2$} & \gate[style=wirethru]{\phantom{g^\dagger}} & \gate{R_z(\varphi_0)} & \targ{} & \gate{R_z(\varphi_1)} & \targ{} & \gate{R_z(\varphi_2)} & \targ{} & \gate{R_z(\varphi)} & \targ{}\gategroup[3,steps=2,style={dashed,rounded corners,fill=black!8,draw=black!50,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=-0.1cm}]{{\footnotesize\color{black!60} 1 merge}} & \gate{H} & \\
+\lstick{$q_2$} & \gate[style=wirethru]{\phantom{g^\dagger}} & \gate{R_z(\varphi_0)} & \targ{} & \gate{R_z(\varphi_1)} & \targ{} & \gate{R_z(\varphi_2)} & \targ{} & \gate{R_z(\varphi)} & \targ{}\gategroup[3,steps=2,style={dashed,rounded corners,fill=black!8,draw=black!50,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=-0.1cm}]{{\footnotesize\color{black!60} 1 merge}} & \gate{H} & \\
 \lstick{$q_1$} & & & & & \ctrl{-1} & & & & \ctrl{-1} & & \\
 \lstick{$q_0$} & & & \ctrl{-2} & & & & \ctrl{-2} & & & &
-\end{quantikz}\\[40pt]
-\textbf{(b) this work: two CX gates merged from the left}\\[2pt]
+\end{quantikz}\\[4pt]
+(a) Standard decomposition\\[28pt]
 \begin{quantikz}[column sep=0.18cm, row sep={0.65cm,between origins}]
-\lstick{$t=q_2$} & \gate[style=newgate]{g^\dagger} & \gate{R_z(\varphi_0)} & \targ{} & \gate{R_z(\varphi_1)} & \targ{} & \gate{R_z(\varphi_2)} & \targ{}\gategroup[3,steps=3,style={dashed,rounded corners,fill=cnew!10,draw=cnew,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=-0.1cm}]{{\footnotesize\color{cnew} 2 merges}} & \targ{} & \gate{H} & \\
+\lstick{$q_2$} & \gate[style=newgate]{g^\dagger} & \gate{R_z(\varphi_0)} & \targ{} & \gate{R_z(\varphi_1)} & \targ{} & \gate{R_z(\varphi_2)} & \targ{}\gategroup[3,steps=3,style={dashed,rounded corners,fill=cnew!10,draw=cnew,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=-0.1cm}]{{\footnotesize\color{cnew} 2 merges}} & \targ{} & \gate{H} & \\
 \lstick{$q_1$} & & & & & \ctrl{-1} & & & \ctrl{-1} & & \\
 \lstick{$q_0$} & & & \ctrl{-2} & & & & \ctrl{-2} & & &
-\end{quantikz}
+\end{quantikz}\\[4pt]
+(b) Pivot decomposition
 \end{tabular}
-\caption{Detailed view of $g^\dagger$ and the left-side multiplexor (blue highlight of Fig.~\ref{fig:node} for $n=3$).
-(a)~Block-ZXZ: $R_z(\varphi)$ separates the final CX gate from the Hadamard, so it cannot be merged into the central factor
-(grey). (b)~This work: the pivot gate $g^\dagger$ makes $\varphi=0$ so the CX gate can be merged. The central multiplexor (not shown)
-uses the same number of CX gates after merging, but now the left-side multiplexor uses 2 instead of 3.}
+\caption{Decomposition of the left-side multiplexor with the pivot gate $g^\dagger$ (blue highlight of
+Fig.~\ref{fig:node} with $n=3$).
+(a) The final rotation $R_z(\varphi)$ allows only one CX gate (gray) to merge into the central multiplexor.
+(b) The pivot gate $g^\dagger$ makes $\varphi=0$, so two CX gates (blue) can merge.
+The central multiplexor (not shown) uses the same number of CX gates after merging, so the left-side multiplexor costs 2 CX gates instead of 3.}
 \label{fig:fold}
 \end{figure}
 
-\subsection{Merging an additional CX into the central multiplexor}\label{sec:fold}
+\subsection{Merging an additional CX gate}\label{sec:fold}
 
 A generic multiplexed gate has a block-diagonal form $U_1\oplus U_2$ with the well-known decomposition~\cite{smb}:
 \begin{equation}\label{eq:demux}
-U_1\oplus U_2=(I\otimes V)\,\Delta(\boldsymbol\theta)\,(I\otimes W),\qquad
-U_1U_2^\dagger=V\operatorname{diag}(e^{-i\theta_j})V^\dagger ,
+U_1\oplus U_2=(I\otimes V)\,D(\boldsymbol\theta)\,(I\otimes W),\qquad
+U_2U_1^\dagger=V\operatorname{diag}(e^{i\theta_j})V^\dagger ,
 \end{equation}
-where the diagonal matrix $\Delta(\boldsymbol\theta)$ is a multiplexed rotation, $\boldsymbol\theta$ are the eigenphases of $U_2U_1^\dagger$, and $V$, $W$ are unitary matrices. Here $j=(j_{n-2}\cdots j_0)_2\in\{0,\dots,D-1\}$, with $D=2^{n-1}$, labels the control basis states in binary, with bit $j_i$ the state of $q_i$. This multiplexed rotation is depicted in Fig.~\ref{fig:fold}a, where the single-qubit rotation angles are computed by~\cite{mottonen}
+where the diagonal matrix $D(\boldsymbol\theta)$ is a multiplexed rotation, $\boldsymbol\theta$ are the eigenphases of $U_2U_1^\dagger$, and $V$, $W$ are unitary matrices. Here $j=(j_{n-2}\cdots j_0)_2\in\{0,\dots,d-1\}$ labels the control basis states in binary, with bit $j_i$ the state of $q_i$. This multiplexed rotation is depicted in Fig.~\ref{fig:fold}a, where the single-qubit rotation angles are computed by~\cite{mottonen}
 \begin{equation}\label{eq:walsh}
-\boldsymbol\varphi=\frac1D H_D\,\boldsymbol\theta,
+\boldsymbol\varphi=\frac1d H\,\boldsymbol\theta,
 \end{equation}
-where $H_D$ is the $D\times D$ Walsh--Hadamard matrix with rows in Gray-code order. As shown in Fig.~\ref{fig:fold}b, our improvement comes from removing the final angle,
+where $H$ is the $d\times d$ Walsh--Hadamard matrix with rows in Gray-code order. As shown in Fig.~\ref{fig:fold}b, the improvement comes from removing the final angle,
 \begin{equation}\label{eq:phi}
-\varphi=\frac1D\,\mathbf h^{\mathsf T}\boldsymbol\theta,
+\varphi=\frac1d\,\mathbf h^{\mathsf T}\boldsymbol\theta,
 \end{equation}
-where $\mathbf h$ is the row of $H_D$ corresponding to the top control qubit $q_{n-2}$, i.e., $h_j=(-1)^{j_{n-2}}$. 
-For example, Fig.~\ref{fig:fold} has $n=3$ so $j=(j_1j_0)_2$ runs over $\lvert q_1q_0\rangle=\lvert00\rangle,\lvert01\rangle,\lvert10\rangle,\lvert11\rangle$, so $\mathbf h=(1,1,-1,-1)$. Removing the final rotation with $\varphi=0$ requires that the eigenphases $\boldsymbol\theta$ be balanced with $\mathbf h$. To achieve this, we define the gate $g=R_z(\alpha)R_y(\beta)$ and write the full decomposition as
+where $\mathbf h$ is the row of $H$ corresponding to the top control qubit $q_{n-2}$, i.e., $h_j=(-1)^{j_{n-2}}$. 
+For example, Fig.~\ref{fig:fold} has $n=3$, so $j=(j_1j_0)_2$ runs over $\lvert q_1q_0\rangle=\lvert00\rangle,\lvert01\rangle,\lvert10\rangle,\lvert11\rangle$, and $\mathbf h=(1,1,-1,-1)$. Removing the final rotation with $\varphi=0$ requires that the eigenphases $\boldsymbol\theta$ be balanced with $\mathbf h$. To achieve this, the gate $g=R_z(\alpha)R_y(\beta)$ is inserted, giving the full decomposition
 \begin{equation}\label{eq:zxz}
 U=(\ast)\,\big(I\oplus C(g)\big)\,(g^\dagger\otimes I),
 \end{equation}
 where $I\oplus C(g)$ is the left-side multiplexor and $(\ast)$ collects the remaining right-side
-gates. We call $g$ a \emph{pivot} because it rotates the eigenspectrum of $C$ to satisfy $\varphi=0$. By~\eqref{eq:demux}, this modified left-side multiplexor can be decomposed as
+gates. The gate $g$ acts as a \emph{pivot} by rotating the eigenspectrum of $C$ to satisfy $\varphi=0$. By~\eqref{eq:demux}, this modified left-side multiplexor can be decomposed as
 \begin{equation}\label{eq:democ}
-C(g)=V\operatorname{diag}\big(e^{i\theta_0},\dots,e^{i\theta_{D-1}}\big)V^\dagger .
+C(g)=V\operatorname{diag}\big(e^{i\theta_0},\dots,e^{i\theta_{d-1}}\big)V^\dagger .
 \end{equation}
 
 This decomposition is not unique. A common permutation of the eigenvalues and the columns of $V$
 leaves~\eqref{eq:democ} unchanged, and each angle is fixed only modulo $2\pi$, since a $2\pi$ shift
-flips the sign of one eigenvector, which $V$ and $W$ absorb. Writing $\mu_0,\dots,\mu_{D-1}$ for the
-eigenphases of $C(g)$, we have
+flips the sign of one eigenvector, which $V$ and $W$ absorb. With $\mu_0,\dots,\mu_{d-1}$ the
+eigenphases of $C(g)$,
 \begin{equation}\label{eq:branch}
 \theta_j=\mu_{k(j)}+2\pi m_j,\qquad m_j\in\mathbb Z,
 \end{equation}
 for any assignment $j\mapsto k(j)$ of eigenphases to basis states.
 
-\subsection{When is the additional merge possible?}\label{sec:cond}
+\subsection{The balanced-split condition}\label{sec:cond}
 
 By~\eqref{eq:phi}, $\varphi$ depends only on how the eigenphases are assigned to the $+1$
-and $-1$ entries of $\mathbf h$, and by~\eqref{eq:branch} we may choose this assignment. Let $S$,
-with $|S|=D/2$, be the set of eigenphases placed on the $+1$ entries. Then
+and $-1$ entries of $\mathbf h$, and by~\eqref{eq:branch} this assignment can be chosen. Let $S$,
+with $|S|=d/2$, be the set of eigenphases placed on the $+1$ entries. Then
 \begin{equation}\label{eq:phiS}
-\varphi=\frac1D\Big(\sum_{k\in S}\mu_k-\sum_{k\notin S}\mu_k\Big)+\frac{2\pi\ell}{D},\qquad
+\varphi=\frac1d\Big(\sum_{k\in S}\mu_k-\sum_{k\notin S}\mu_k\Big)+\frac{2\pi\ell}{d},\qquad
 \ell\in\mathbb Z,
 \end{equation}
 where $\ell=\sum_{h_j=+1}m_j-\sum_{h_j=-1}m_j$ is set by the branches and can take any integer
@@ -176,47 +171,42 @@ be set to zero iff
 \begin{equation}\label{eq:split}
 \sum_{k\in S}\mu_k-\sum_{k\notin S}\mu_k=-2\pi\ell\qquad\text{for some }\ell\in\mathbb Z .
 \end{equation}
-We call such an $S$ a \emph{balanced split}. For a fixed $C$ this is nongeneric: the left side of~\eqref{eq:split}
+Such an $S$ is a \emph{balanced split}. For a fixed $C$ this is nongeneric: the left side of~\eqref{eq:split}
 varies continuously with $C$, while the right side is discrete. The pivot, however, gives a
 continuous one-parameter family $C(\beta)$, so~\eqref{eq:split} becomes a scalar root condition
 in $\beta$.
-\subsection{Choosing the pivot gate}\label{sec:exist}
 
-We denote by $\alpha^{*}$ and $\beta^{*}$ the pivot angles that produce a balanced split. The angle
+\subsection{Finding the pivot angles}\label{sec:exist}
+
+Let $\alpha^{\ast}$ and $\beta^{\ast}$ denote the pivot angles that produce a balanced split. The angle
 $\beta$ moves $C$ from $C(0)$ to $C(0)^{-1}$, while $\alpha$ is chosen so that an ordered
 eigenphase list reverses and changes sign between these endpoints.
 
-\paragraph{The path $C(\beta)$.} Write $U=\begin{psmallmatrix}X&Y\\ \ast&\ast\end{psmallmatrix}$
-in $D\times D$ blocks, where $D=2^{n-1}$ is divisible by four for $n\ge3$, and assume $X$ and $Y$ are
-invertible, which holds for generic $U$. With $c=\cos(\beta/2)$ and $s=\sin(\beta/2)$, the pivot
-$g$ gives $U(g\otimes I)$ the top-row blocks
+\paragraph{The path $C(\beta)$.} Writing the target unitary as $U=\begin{psmallmatrix}X&Y\\ \ast&\ast\end{psmallmatrix}$, the pivoted top-row blocks become
 \begin{equation}\label{eq:path}
-X_g=e^{-i\alpha/2}c\,X+e^{i\alpha/2}s\,Y,\qquad
-Y_g=-e^{-i\alpha/2}s\,X+e^{i\alpha/2}c\,Y .
+X_g=e^{-i\alpha/2}\cos\tfrac\beta2\,X+e^{i\alpha/2}\sin\tfrac\beta2\,Y,\qquad
+Y_g=-e^{-i\alpha/2}\sin\tfrac\beta2\,X+e^{i\alpha/2}\cos\tfrac\beta2\,Y .
 \end{equation}
-At the endpoints the blocks swap with a sign change: $(X_g,Y_g)$ is
-$(e^{-i\alpha/2}X,\,e^{i\alpha/2}Y)$ at $\beta=0$ and $(e^{i\alpha/2}Y,\,-e^{-i\alpha/2}X)$ at
-$\beta=\pi$.
 For fixed $\alpha$, the Block-ZXZ factorization~\cite[Sec.~4.1]{zxz} gives the
 multiplexor matrix of~\eqref{eq:zxz} in terms of these pivoted blocks:
 \begin{equation}\label{eq:Cdef}
 C(\beta)=-i\,X_g^\dagger\,(X_gX_g^\dagger)^{-1/2}(Y_gY_g^\dagger)^{-1/2}\,Y_g,
 \end{equation}
-where the inverse square roots are positive definite. The endpoint relation is
+where the inverse square roots are positive definite. 
+The endpoint relation is
 \begin{equation}\label{eq:inv}
-C(\pi)=C(0)^\dagger=C(0)^{-1}.
+C(\pi)=C(0)^\dagger=C(0)^{-1},
 \end{equation}
-Thus the endpoint eigenphases are negatives of the starting ones, modulo $2\pi$ and up to
-permutation. We will use this symmetry to construct a continuous real phase imbalance with
-opposite endpoint values, forcing a zero at some $\beta^\ast\in[0,\pi]$.
+since at $\beta=\pi$ the blocks swap with a sign change, so the ending eigenphases are the negatives of the starting ones, modulo $2\pi$ and up to permutation. 
+This symmetry yields a continuous real phase imbalance with opposite endpoint values, which therefore has a zero at some $\beta^\ast\in[0,\pi]$.
 
 \paragraph{Choosing $\alpha$.} In~\eqref{eq:Cdef} the inverse square roots have positive
-determinants and $(-i)^D=1$, so $\det C$ has the phase of $\det Y_g/\det X_g$. With $\tau_k$ the
+determinants and $(-i)^d=1$, so $\det C$ has the phase of $\det Y_g/\det X_g$. With $\tau_k$ the
 eigenvalues of $e^{i\alpha}X^{-1}Y$, \eqref{eq:path} gives
 \begin{equation}\label{eq:dets}
-\frac{\det Y_g}{\det X_g}=\prod_k\left(\tau_k\,\frac{c-s/\tau_k}{c+s\tau_k}\right).
+\frac{\det Y_g}{\det X_g}=\prod_k\left(\tau_k\,\frac{\cos\frac\beta2-\sin\frac\beta2/\tau_k}{\cos\frac\beta2+\tau_k\sin\frac\beta2}\right).
 \end{equation}
-As $\beta$ runs from $0$ to $\pi$, the factor $c+s\tau_k$ moves from $1$ to $\tau_k$ and $c-s/\tau_k$
+As $\beta$ runs from $0$ to $\pi$, the factor $\cos\frac\beta2+\tau_k\sin\frac\beta2$ moves from $1$ to $\tau_k$ and $\cos\frac\beta2-\sin\frac\beta2/\tau_k$
 from $1$ to $-1/\tau_k$. For nonreal $\tau_k$ and $\beta>0$, both lie in the open half-plane
 containing $\tau_k$ and cannot vanish. Thus choosing $\alpha$ with no real $\tau_k$ keeps
 $X_g$, $Y_g$ invertible and $C(\beta)$ continuous. The two factors accumulate phases $\arg\tau_k$ and
@@ -226,10 +216,10 @@ numerator phase gives the total change in the continuous phase of $\det C$:
 \pi\,(N_+-N_-)-2\sum_k\arg\tau_k ,\qquad \arg\tau_k\in(-\pi,\pi),
 \end{equation}
 where $N_\pm$ count the $\tau_k$ in the upper and lower half-planes. Choosing $\alpha^\ast$ with
-$N_+=N_-=D/2$ removes the half-turn term. Varying $\alpha$ rotates all $\tau_k$
+$N_+=N_-=d/2$ removes the half-turn term. Varying $\alpha$ rotates all $\tau_k$
 together. With distinct crossing angles, $N_+$ changes by one at each real-axis crossing; a
-rotation by $\pi$ replaces $N_+$ by $D-N_+$. The count therefore reaches $D/2$ on an interval
-between crossings, and we choose $\alpha^\ast$ in its interior.
+rotation by $\pi$ replaces $N_+$ by $d-N_+$. The count therefore reaches $d/2$ on an interval
+between crossings, and $\alpha^\ast$ is chosen in its interior.
 
 \paragraph{Choosing $\beta$.} With $\alpha=\alpha^\ast$, let $\sigma(\beta)$ be the continuous phase
 of $\det C(\beta)$ with $\sigma(0)=\sum_k\arg\tau_k$. By~\eqref{eq:dphase},
@@ -238,15 +228,15 @@ of $\det C(\beta)$ with $\sigma(0)=\sum_k\arg\tau_k$. By~\eqref{eq:dphase},
 \end{equation}
 Choose real representatives of the eigenphases of $C(\beta)$, ordered by rank $k$:
 \begin{equation}\label{eq:nu}
-\nu_0(\beta)\le\cdots\le\nu_{D-1}(\beta)\le\nu_0(\beta)+2\pi,\qquad
+\nu_0(\beta)\le\cdots\le\nu_{d-1}(\beta)\le\nu_0(\beta)+2\pi,\qquad
 \sum_k\nu_k(\beta)=\sigma(\beta).
 \end{equation}
 The interval condition fixes the ordered list up to cyclic reordering with $2\pi$ branch
 shifts. Moving the smallest phase to the end after adding $2\pi$ increases the sum by $2\pi$,
 so the sum condition selects a unique list. This choice varies continuously with $\beta$,
 including when a phase crosses the argument cut. Negating an increasing list reverses its
-order, so~\eqref{eq:inv} and~\eqref{eq:sigma} give $\nu_k(\pi)=-\nu_{D-1-k}(0)$. The middle
-half $S=\{D/4,\dots,3D/4-1\}$ of the ranks is invariant under $k\mapsto D-1-k$, so the imbalance
+order, so~\eqref{eq:inv} and~\eqref{eq:sigma} give $\nu_k(\pi)=-\nu_{d-1-k}(0)$. The middle
+half $S=\{d/4,\dots,3d/4-1\}$ of the ranks is invariant under $k\mapsto d-1-k$, so the imbalance
 \begin{equation}\label{eq:P}
 P(\beta)=\sum_{k\in S}\nu_k(\beta)-\sum_{k\notin S}\nu_k(\beta)
 \end{equation}
@@ -254,23 +244,20 @@ satisfies
 \begin{equation}\label{eq:sign}
 P(\pi)=-P(0),
 \end{equation}
-and by continuity $P(\beta^\ast)=0$ for some $\beta^\ast\in[0,\pi]$. There the sums over the
-two halves agree. Taking
-$\mu_k=\nu_k(\beta^\ast)$, the middle half $S$ satisfies~\eqref{eq:split} with $\ell=0$. Placing
-these lifted eigenphases on the basis states with $h_j=+1$ and the rest on $h_j=-1$, with no
-additional branch shifts
-($m_j=0$ in~\eqref{eq:branch}), gives $\varphi=0$, and the pivot $g=R_z(\alpha^\ast)R_y(\beta^\ast)$
-lets the additional CX merge.
+and by continuity $P(\beta^\ast)=0$ for some $\beta^\ast\in[0,\pi]$.
+Thus, taking $\mu_k=\nu_k(\beta^\ast)$, the middle half $S$ satisfies~\eqref{eq:split} with $\ell=0$ and placing
+these lifted eigenphases on the basis states with $h_j=+1$ and the rest on $h_j=-1$ gives $\varphi=0$.
 
-\subsection{Gate count}\label{sec:count}
+\subsection{CX gate count}\label{sec:count}
 
 Block-ZXZ needs at most $c_n\le4c_{n-1}+3\cdot2^{n-1}-5$ CX gates~\cite[Sec.~5.3]{zxz}: four
 $(n-1)$-qubit children and three multiplexors of $2^{n-1}$ CX gates each, less one CX for each of the
-three children decomposed up to a diagonal and one for each of the two CX gates merged into the
+three children decomposed up to a diagonal~\cite{smbdiag} and one for each of the two CX gates merged into the
 central multiplexor. The pivot merges a third, so
 \begin{equation}\label{eq:rec}
-c_n= 4c_{n-1}+3\cdot2^{n-1}-6 ,\qquad c_2=3 .
+c_n= 4c_{n-1}+3\cdot2^{n-1}-6 ,\qquad c_2=3 ,
 \end{equation}
+where $c_2=3$ is the optimal CX count for a generic two-qubit unitary~\cite{smb2q}.
 Unrolling over the $(4^{n-2}-1)/3$ recursion nodes as in~\cite[Sec.~5.3]{zxz},
 \[
 c_n=4^{n-2}c_2+3\cdot2^{n-1}\big(2^{n-2}-1\big)-2\big(4^{n-2}-1\big)
@@ -287,47 +274,54 @@ $\big(\tfrac{22}{48}-\tfrac{21}{48}\big)4^n+\tfrac53-2=\tfrac{4^{n-2}-1}{3}$.
 %==========================================================================================
 \section{Results and Discussion}\label{sec:res}
 
-We implemented the improved decomposition of Sec.~II in Python using standard linear algebra primitives 
-provided with numpy and scipy.
-
-Figure~\ref{fig:benchmark} compares the CX counts and total synthesis times for our proposed 
-decomposition against the current best-known Block-ZXZ decomposition. These comparisons use
-the same random unitary instances.
-The target unitary matrix and reconstructed circuit matrix are equal to machine precision.
-All experiments were run on a MacBook Pro (M1 series, 2021).
+Figure~\ref{fig:benchmark} compares the proposed pivot decomposition against the current best-known Block-ZXZ decomposition. 
+Both methods are run on the same Haar-random unitaries.
+The target unitary matrix and reconstructed circuit matrix are equal to machine precision (up to global phase).
+All experiments were run on a MacBook Pro (M1 series, 2021) using standard linear algebra primitives from \texttt{numpy} and \texttt{scipy}.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth]{bal_benchmark.pdf}
-\caption{Our improved decomposition (blue) against the best-known baseline Block-ZXZ (grey).
-(a)~CX count divided by $4^n$ with the lower bound in black. The
-dotted lines mark asymptotic coefficients $22/48$, $21/48$, and $12/48$.
-(b)~Total synthesis time on a logarithmic axis.}
+\caption{Comparison of the pivot decomposition (blue) with Block-ZXZ (gray).
+(a) The CX count divided by $4^n$ (solid dots) with the asymptotic coefficients (dotted lines). Each point is labeled with its CX count.
+(b) Total runtime of the decomposition.}
 \label{fig:benchmark}
 \end{figure}
 
-Our decomposition method requires $\frac{4^{n-2}-1}{3}$ fewer CX gates while incurring roughly $2\times$ added runtime cost, which appears
-to be constant. 
+The pivot decomposition produces quantum circuits using $(4^{n-2}-1)/3$ fewer CX gates at the cost of added runtime. The counts reported in Fig.~\ref{fig:benchmark}a match the expected recurrence formula.
 
-Each recursive step requires a one-dimensional root search with a guaranteed solution. 
-The CX count is independent of the method used to locate the root, so perhaps further runtime improvements can be made.
+Each recursive step already costs $O(d^3)$, and each root-search iteration also costs $O(d^3)$, so the overhead should be constant as long as the number of iterations does not grow with $n$. This depends on convergence tolerance and warrants further study: the empirical overhead in Fig.~\ref{fig:benchmark}b is about $2$--$2.5\times$. The CX count is independent of the root-search method, so further runtime improvements may be possible.
 
 A second pivot applied in reverse to the right-side multiplexor could perhaps save another
-$(4^{n-2}-1)/3$ CX gates, though the two pivots are coupled and would require a joint search.
+$(4^{n-2}-1)/3$ CX gates, although the two pivots are coupled and would require a joint search.
+
+\section*{Acknowledgements}
+
+Under my supervision, Claude Opus 5.5 (Anthropic) was used to construct all \texttt{Lean} formalisms, generate the numerical experiments, and aid in writing this paper.
+
+\section*{Code availability}
+
+The formal theorems and proofs of the results outlined in Sec.~\ref{sec:alg} and numerical experiments presented in Sec.~\ref{sec:res}
+are available~\cite{code}.
 
 \begin{thebibliography}{9}
+\bibitem{smb2q} V.~V.~Shende, I.~L.~Markov, S.~S.~Bullock, \emph{Minimal universal two-qubit
+controlled-NOT-based circuits}, Phys.\ Rev.\ A 69, 062321 (2004), arXiv:quant-ph/0308033.
 \bibitem{smb} V.~V.~Shende, S.~S.~Bullock, I.~L.~Markov, \emph{Synthesis of quantum logic
 circuits}, IEEE TCAD 25, 1000 (2006), arXiv:quant-ph/0406176.
 \bibitem{zxz} A.~M.~Krol, Z.~Al-Ars, \emph{Beyond quantum Shannon decomposition: circuit
 construction for $n$-qubit gates based on block-ZXZ decomposition}, Phys.\ Rev.\ Applied 22,
 034019 (2024), arXiv:2403.13692.
+\bibitem{baqc} L.~Madden, A.~Simonetto, \emph{Best approximate quantum compiling problems},
+ACM Trans.\ Quantum Comput.\ 3, 7 (2022), arXiv:2106.05649.
+\bibitem{squander} P.~Rakyta, Z.~Zimbor\'as, \emph{Approaching the theoretical limit in quantum
+gate decomposition}, Quantum 6, 710 (2022), arXiv:2109.06770.
 \bibitem{mottonen} M.~M\"ott\"onen, J.~J.~Vartiainen, V.~Bergholm, M.~M.~Salomaa,
 \emph{Quantum circuits for general multiqubit gates}, Phys.\ Rev.\ Lett.\ 93, 130502 (2004),
 arXiv:quant-ph/0404089.
-\bibitem{brickwall} D.~Wierichs, J.~S.~Kottmann, N.~Killoran, \emph{Unitary synthesis with optimal
-brick wall circuits}, arXiv:2511.16736.
-\bibitem{squander} P.~Rakyta, Z.~Zimbor\'as, \emph{Approaching the theoretical limit in quantum
-gate decomposition}, Quantum 6, 710 (2022).
+\bibitem{code} M.~Bowring, \emph{lean-unitary}, \url{https://github.com/bowrango/lean-unitary}.
+\bibitem{smbdiag} V.~V.~Shende, S.~S.~Bullock, I.~L.~Markov, \emph{Recognizing small-circuit
+structure in two-qubit operators and timing Hamiltonians to compute controlled-not gates}, Phys.\ Rev.\ A 70, 012310 (2004), arXiv:quant-ph/0308045.
 \end{thebibliography}
 
 \end{document}

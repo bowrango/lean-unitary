@@ -94,7 +94,7 @@ def plot(rows: list[dict], output: Path) -> None:
         fig, (ax, tx) = plt.subplots(1, 2, figsize=(6.4, 2.6))
         for key, color, limit, label in (
             ("zxz", "0.35", 22 / 48, "Block-ZXZ"),
-            ("ours", "#0047cc", 21 / 48, "Improved"),
+            ("ours", "#0047cc", 21 / 48, "This work"),
         ):
             raw = [group[0][f"{key}_cx"] for group in groups]
             counts = [c / 4.0**n for n, c in zip(ns, raw)]

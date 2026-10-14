@@ -138,8 +138,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--samples", type=int, default=1)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
-        "--output", type=Path, default=Path("bal_benchmark.pdf"),
-        help="comparison figure path (default: bal_benchmark.pdf)",
+        "--output", type=Path, default=Path("benchmark.pdf"),
+        help="comparison figure path (default: benchmark.pdf)",
     )
     args = parser.parse_args(argv)
     print(f"Python {platform.python_version()}, NumPy {np.__version__}, "

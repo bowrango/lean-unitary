@@ -41,6 +41,8 @@ c_{\min}(n)\ \ge\ \big\lceil \tfrac14(4^n-3n-1)\big\rceil
 \]
 CX gates. These two-qubit gates are typically the bottleneck for quantum processors due to their connectivity constraints and dominant error rates.
 
+Synthesis methods optimize several different objectives: the total CX count, circuit depth, ancilla count, non-Clifford gate count, compliance with hardware connectivity, and approximation accuracy. This work targets the total CX count for exact synthesis without ancillas.
+
 \subsection{Existing work}
 
 The current approaches either provide an analytical decomposition or rely on numerical optimization of gate parameters.
@@ -69,7 +71,7 @@ $g^\dagger$ (blue fill) allows the left-side multiplexor (blue dots) to use one 
 
 \subsection{Contribution}
 
-I adapt the current best-known exact Block-ZXZ decomposition with a parameterized single-qubit gate at each recursive step, as depicted in Fig.~\ref{fig:node} with blue highlights. This gate is chosen such that an additional CX gate can be merged into the central multiplexor, similar to the original technique used by Block-ZXZ to improve QSD. However, as outlined in Sec.~\ref{sec:alg}, the gate parameters do require optimization instead of the direct commutation rules used by Block-ZXZ. I obtain these parameters with a one-dimensional root search rather than gradient-based optimization. Section~\ref{sec:res} presents numerical experiments and discusses the practicality and potential further improvements. Table~\ref{tab:counts} summarizes the main gate count result.
+I adapt the current best-known exact Block-ZXZ decomposition with a parameterized single-qubit gate at each recursive step, as depicted in Fig.~\ref{fig:node} with blue highlights. This gate is chosen such that an additional CX gate can be merged into the central multiplexor, similar to the original technique used by Block-ZXZ to improve QSD. However, as outlined in Sec.~\ref{sec:alg}, obtaining such gate parameters involves a root search instead of the direct commutation rules used by Block-ZXZ. This search enforces an algebraic constraint and avoids gradient-based fidelity optimization typically used by conventional synthesis methods. Section~\ref{sec:res} presents numerical experiments and discusses the practicality and potential further improvements. Table~\ref{tab:counts} summarizes the main gate count result.
 
 \begin{table}[H]
 \centering
@@ -90,7 +92,7 @@ Theoretical lower bound & 0 & 3 & 14 & 61 & 252 & 1020 & $\lceil(4^n-3n-1)/4\rce
 
 
 %==========================================================================================
-\section{An improved decomposition}\label{sec:alg}
+\section{The pivot decomposition}\label{sec:alg}
 
 The results of this section are verified in \texttt{Lean} and assume the standard gate decompositions. 
 While this paper omits the formal theorems and proofs, the \texttt{Lean} constructions are available~\cite{code}.

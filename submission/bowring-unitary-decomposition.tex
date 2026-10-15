@@ -125,25 +125,25 @@ The central multiplexor (not shown) uses the same number of CX gates after mergi
 
 \subsection{Merging an additional CX gate}\label{sec:fold}
 
-A generic multiplexed gate has a block-diagonal form $U_1\oplus U_2$ with the well-known decomposition~\cite{smb}:
+A generic multiplexed gate has a block-diagonal form $U_1\oplus U_2$, with $U_1,U_2\in\mathbb C^{d\times d}$, and the well-known decomposition~\cite{smb}:
 \begin{equation}\label{eq:demux}
 U_1\oplus U_2=(I\otimes V)\,D(\boldsymbol\theta)\,(I\otimes W),\qquad
 U_2U_1^\dagger=V\operatorname{diag}(e^{i\theta_j})V^\dagger ,
 \end{equation}
-where the diagonal matrix $D(\boldsymbol\theta)$ is a multiplexed rotation, $\boldsymbol\theta$ are the eigenphases of $U_2U_1^\dagger$, and $V$, $W$ are unitary matrices. Here $j=(j_{n-2}\cdots j_0)_2\in\{0,\dots,d-1\}$ labels the control basis states in binary, with bit $j_i$ the state of $q_i$. This multiplexed rotation is depicted in Fig.~\ref{fig:fold}a, where the single-qubit rotation angles are computed by~\cite{mottonen}
+where the diagonal matrix $D(\boldsymbol\theta)\in\mathbb C^{2d\times 2d}$ is a multiplexed rotation, $\boldsymbol\theta\in\mathbb R^d$ are the eigenphases of $U_2U_1^\dagger$, and $V,W\in\mathbb C^{d\times d}$ are unitary matrices. Here $j=(j_{n-2}\cdots j_0)_2\in\{0,\dots,d-1\}$ labels the control basis states in binary, with bit $j_i$ the state of $q_i$. This multiplexed rotation is depicted in Fig.~\ref{fig:fold}a, where the single-qubit rotation angles are computed by~\cite{mottonen}
 \begin{equation}\label{eq:walsh}
 \boldsymbol\varphi=\frac1d H\,\boldsymbol\theta,
 \end{equation}
-where $H$ is the $d\times d$ Walsh--Hadamard matrix with rows in Gray-code order. As shown in Fig.~\ref{fig:fold}b, the improvement comes from removing the final angle,
+where $\boldsymbol\varphi\in\mathbb R^d$ and $H\in\{\pm1\}^{d\times d}$ is the Walsh--Hadamard matrix with rows in Gray-code order. As shown in Fig.~\ref{fig:fold}b, the improvement comes from removing the final angle,
 \begin{equation}\label{eq:phi}
 \varphi=\frac1d\,\mathbf h^{\mathsf T}\boldsymbol\theta,
 \end{equation}
-where $\mathbf h$ is the row of $H$ corresponding to the top control qubit $q_{n-2}$, i.e., $h_j=(-1)^{j_{n-2}}$. 
-For example, Fig.~\ref{fig:fold} has $n=3$, so $j=(j_1j_0)_2$ runs over $\lvert q_1q_0\rangle=\lvert00\rangle,\lvert01\rangle,\lvert10\rangle,\lvert11\rangle$, and $\mathbf h=(1,1,-1,-1)$. Removing the final rotation with $\varphi=0$ requires that the eigenphases $\boldsymbol\theta$ be balanced with $\mathbf h$. To achieve this, the gate $g=R_z(\alpha)R_y(\beta)$ is inserted, giving the full decomposition
+where $\mathbf h\in\{\pm1\}^d$ is the row of $H$ corresponding to the top control qubit $q_{n-2}$, i.e., $h_j=(-1)^{j_{n-2}}$. 
+For example, Fig.~\ref{fig:fold} has $n=3$, so $j=(j_1j_0)_2$ runs over $\lvert q_1q_0\rangle=\lvert00\rangle,\lvert01\rangle,\lvert10\rangle,\lvert11\rangle$, and $\mathbf h=(1,1,-1,-1)$. Removing the final rotation with $\varphi=0$ requires that the eigenphases $\boldsymbol\theta$ be balanced with $\mathbf h$. To achieve this, the gate $g=R_z(\alpha)R_y(\beta)\in\mathbb C^{2\times 2}$ is inserted, giving the full decomposition
 \begin{equation}\label{eq:zxz}
 U=(\ast)\,\big(I\oplus C(g)\big)\,(g^\dagger\otimes I),
 \end{equation}
-where $I\oplus C(g)$ is the left-side multiplexor and $(\ast)$ collects the remaining right-side
+where $I\oplus C(g)$ is the left-side multiplexor with $C(g)\in\mathbb C^{d\times d}$ and $(\ast)$ collects the remaining right-side
 gates. The gate $g$ acts as a \emph{pivot} by rotating the eigenspectrum of $C$ to satisfy $\varphi=0$. By~\eqref{eq:demux}, this modified left-side multiplexor can be decomposed as
 \begin{equation}\label{eq:democ}
 C(g)=V\operatorname{diag}\big(e^{i\theta_0},\dots,e^{i\theta_{d-1}}\big)V^\dagger .
@@ -184,7 +184,7 @@ Let $\alpha^{\ast}$ and $\beta^{\ast}$ denote the pivot angles that produce a ba
 $\beta$ moves $C$ from $C(0)$ to $C(0)^{-1}$, while $\alpha$ is chosen so that an ordered
 eigenphase list reverses and changes sign between these endpoints.
 
-\paragraph{The path $C(\beta)$.} Writing the target unitary as $U=\begin{psmallmatrix}X&Y\\ \ast&\ast\end{psmallmatrix}$, the pivoted top-row blocks become
+\paragraph{The path $C(\beta)$.} Writing the target unitary as $U=\begin{psmallmatrix}X&Y\\ \ast&\ast\end{psmallmatrix}\in\mathbb C^{2^n\times 2^n}$ with $X,Y\in\mathbb C^{d\times d}$, the pivoted top-row blocks $X_g,Y_g\in\mathbb C^{d\times d}$ become
 \begin{equation}\label{eq:path}
 X_g=e^{-i\alpha/2}\cos\tfrac\beta2\,X+e^{i\alpha/2}\sin\tfrac\beta2\,Y,\qquad
 Y_g=-e^{-i\alpha/2}\sin\tfrac\beta2\,X+e^{i\alpha/2}\cos\tfrac\beta2\,Y .

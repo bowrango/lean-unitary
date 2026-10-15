@@ -3,7 +3,7 @@ import Mathlib
 /-!
 # Balanced splits
 
-The merge condition of `submission/decomposition.tex`, Sec. II.B. Demultiplexing `I ⊕ C`
+The merge condition of the paper, Sec. II.B. Demultiplexing `I ⊕ C`
 assigns eigenphases `μ_k` of `C` to basis states `j`, `θ_j = μ_{k(j)} + 2π m_j` (Eq. 6), and the
 final angle of the multiplexed rotation is `φ = (1/D) Σ_j h_j θ_j` (Eq. 3), with `h_j = ±1`.
 

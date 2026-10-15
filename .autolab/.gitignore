@@ -1,3 +1,0 @@
-# Track hill sources in the repo; these must always stay excluded.
-hills/*/.vc/
-hills/*/private/

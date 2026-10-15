@@ -2,12 +2,6 @@ import LeanUnitary.Spec
 import LeanUnitary.Circuit
 import LeanUnitary.Blocks
 import LeanUnitary.LinearAlgebra
-import LeanUnitary.Decomposition.Multiplexor
-import LeanUnitary.Decomposition.Demultiplex
-import LeanUnitary.Decomposition.CosineSine
-import LeanUnitary.Decomposition.TwoQubit
-import LeanUnitary.Decomposition.QSD
-import LeanUnitary.Decomposition.BlockZXZ
 import LeanUnitary.Pivot.Path.Gate
 import LeanUnitary.Pivot.Path.Eigenvalues
 import LeanUnitary.Pivot.Multiplexor.Basic
@@ -20,6 +14,11 @@ import LeanUnitary.Pivot.Existence.EigenContinuity
 import LeanUnitary.Pivot.Existence.PhaseList
 import LeanUnitary.Pivot.Existence.Imbalance
 import LeanUnitary.Pivot.Existence.Pivot
-import LeanUnitary.Pivot.Synthesis
 import LeanUnitary.Pivot.Count
-import LeanUnitary.Claims
+import LeanUnitary.Pivot.Node.TopGates
+import LeanUnitary.Pivot.Node.Gray
+import LeanUnitary.Pivot.Node.Factor
+import LeanUnitary.Pivot.Node.Demux
+import LeanUnitary.Pivot.Node.Glue
+import LeanUnitary.Pivot.Node.Factorize
+import LeanUnitary.Pivot.Node.Synth

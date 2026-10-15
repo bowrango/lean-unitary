@@ -3,7 +3,7 @@ import Mathlib
 /-!
 # The normalized eigenphase lift
 
-`submission/decomposition.tex`, Eq. 15. A *normalized lift* of `D` eigenphases is a list of real
+The paper, Eq. 15. A *normalized lift* of `D` eigenphases is a list of real
 representatives `ν_0 ≤ ⋯ ≤ ν_{D-1} ≤ ν_0 + 2π`. The paper fixes the lift by its sum.
 
 * `normalized_lift_unique`: two normalized lifts of the same phases (as a multiset modulo `2π`)

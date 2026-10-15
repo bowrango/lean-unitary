@@ -3,7 +3,7 @@ import LeanUnitary.Spec
 /-!
 # The pivot gate and the pivoted blocks
 
-`submission/decomposition.tex`, Sec. II.C. The pivot is `g = R_z(α) R_y(β)`. Write
+The paper, Sec. II.C. The pivot is `g = R_z(α) R_y(β)`. Write
 `U = [X Y; * *]` in `D × D` blocks, with `c = cos(β/2)` and `s = sin(β/2)`. Then `U (g ⊗ I)`
 has the top-row blocks (Eq. 9)
 

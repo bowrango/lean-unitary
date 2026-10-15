@@ -3,7 +3,7 @@ import LeanUnitary.Pivot.Path.Gate
 /-!
 # Eigenvalues and the determinants of the pivoted blocks
 
-`submission/decomposition.tex`, Eq. 12. The eigenvalues `τ_k` of `M = e^{iα} X⁻¹ Y`, taken as
+The paper, Eq. 12. The eigenvalues `τ_k` of `M = e^{iα} X⁻¹ Y`, taken as
 roots of the characteristic polynomial with multiplicity, control the determinants of the
 pivoted blocks:
 
@@ -142,9 +142,9 @@ theorem exists_list_of_card {α : Type*} {D : ℕ} (s : Multiset α) (hs : s.car
   exact ⟨l.get, by rw [Fin.univ_val_map, List.ofFn_get]⟩
 
 /-- Two lists with the same multiset of values differ by a permutation. -/
-theorem exists_perm_of_map_eq {D : ℕ} {β : Type*} {f g : Fin D → β}
-    (h : (univ : Finset (Fin D)).val.map f = (univ : Finset (Fin D)).val.map g) :
-    ∃ σ : Equiv.Perm (Fin D), ∀ k, g (σ k) = f k := by
+theorem exists_perm_of_map_eq {ι β : Type*} [Fintype ι] {f g : ι → β}
+    (h : (univ : Finset ι).val.map f = (univ : Finset ι).val.map g) :
+    ∃ σ : Equiv.Perm ι, ∀ k, g (σ k) = f k := by
   classical
   have hcard : ∀ c, Fintype.card {a // f a = c} = Fintype.card {b // g b = c} := fun c => by
     have := congrArg (Multiset.count c) h

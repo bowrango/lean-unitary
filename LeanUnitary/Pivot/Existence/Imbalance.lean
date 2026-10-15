@@ -3,7 +3,7 @@ import LeanUnitary.Pivot.Split
 /-!
 # The middle-half imbalance and the sign change
 
-The sign-change argument of `submission/decomposition.tex`, Sec. II.C ("Choosing β"). The
+The sign-change argument of the paper, Sec. II.C ("Choosing β"). The
 multiplexor has `D = 4q` eigenphases, and `ν β : Fin D → ℝ` is the ordered, lifted list of the
 eigenphases of `C(β)` (Eq. 15). The paper shows that, for the pivot angle `α*`, the list depends
 continuously on `β` and satisfies the endpoint relation `ν_k(π) = -ν_{D-1-k}(0)`.

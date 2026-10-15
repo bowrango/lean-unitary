@@ -3,7 +3,7 @@ import Mathlib
 /-!
 # Choosing the pivot angle `α*`
 
-`submission/decomposition.tex`, Sec. II.C ("Choosing α"). The pivot rotates the eigenvalues
+The paper, Sec. II.C ("Choosing α"). The pivot rotates the eigenvalues
 `τ_k` of `X⁻¹Y` together, `τ_k ↦ e^{iα} τ_k`. Taking `α*` with no rotated `τ_k` real and exactly
 half of them in the upper half-plane (`N₊ = N₋ = D/2`) removes the half-turn term of Eq. 13.
 

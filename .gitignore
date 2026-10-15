@@ -3,10 +3,6 @@
 
 __pycache__/
 
-# autolab's local workspace state (hill sources under .autolab/hills stay tracked)
-.autolab/git/
-.autolab/config.json
-
 # LaTeX build artifacts and PDFs (rebuild from the .tex sources)
 *.aux
 *.log

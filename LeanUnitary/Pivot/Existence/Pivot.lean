@@ -7,7 +7,7 @@ import LeanUnitary.Pivot.Existence.Imbalance
 /-!
 # The pivot angles exist, and the extra CX merges
 
-`submission/decomposition.tex`, Sec. II.C, assembled. For a pivot angle `α` with no `τ_k` real and
+The paper, Sec. II.C, assembled. For a pivot angle `α` with no `τ_k` real and
 `N₊ = N₋`, let `ν(β)` be the normalized lift of the eigenphases of `C(β)` whose sum is the
 continuous phase `σ(β)` of `det C(β)`.
 
@@ -131,7 +131,8 @@ theorem exists_pivot {X Y : Matrix m m ℂ} (hX : IsUnit X.det) (hY : IsUnit Y.d
     (hcard : Fintype.card m = 4 * (q + 1)) (u : Fin (4 * (q + 1)) → ℂ)
     (hu : (univ : Finset (Fin (4 * (q + 1)))).val.map u = (X⁻¹ * Y).charpoly.roots)
     (hline : ∀ j k, j ≠ k → ∀ z : ℤ, arg (u j) - arg (u k) ≠ z * Real.pi) :
-    ∃ α : ℝ, ∃ β ∈ Set.Icc 0 Real.pi, ∃ μ : Fin (4 * (q + 1)) → ℝ,
+    ∃ α : ℝ, ∃ β ∈ Set.Icc 0 Real.pi,
+      IsUnit (Xg α β X Y).det ∧ IsUnit (Yg α β X Y).det ∧ ∃ μ : Fin (4 * (q + 1)) → ℝ,
       IsPhaseList (n := 4 * q + 3) (multiplexor α β X Y) μ ∧
       ∃ (e : Equiv.Perm (Fin (4 * (q + 1)))) (m' : Fin (4 * (q + 1)) → ℤ),
         walsh (topPlus (q + 1)) μ e m' = 0 := by
@@ -163,14 +164,14 @@ theorem exists_pivot {X Y : Matrix m m ℂ} (hX : IsUnit X.det) (hY : IsUnit Y.d
     omega
   obtain ⟨β, hβ, μ, hμ, e, m', h⟩ :=
     exists_pivot_beta α hX hY q hcard hτ (hpos.trans hneg.symm)
-  exact ⟨α, β, hβ, μ, hμ, e, m', h⟩
+  exact ⟨α, β, hβ, isUnit_det_Xg α β hX Y hτ, isUnit_det_Yg α β hX Y hτ, μ, hμ, e, m', h⟩
 
 /-! ## The extra CX merges -/
 
 /-- **The pivot allows the extra CX merge.** Let `U = [X Y; Z W]` have invertible `D × D` blocks
 `X`, `Y`, `D = 4(q + 1)`, with the eigenvalues `u` of `X⁻¹ Y` at distinct crossing angles. Then
-some pivot `g = R_z(α) R_y(β)`, `β ∈ [0, π]`, gives `U (g ⊗ I)` top blocks `X'`, `Y'` whose
-Block-ZXZ multiplexor `C = zxzC X' Y'` has eigenvalues `e^{iθ_j}` with final angle `φ = 0`. -/
+some pivot `g = R_z(α) R_y(β)`, `β ∈ [0, π]`, gives `U (g ⊗ I)` invertible top blocks `X'`, `Y'`
+whose Block-ZXZ multiplexor `C = zxzC X' Y'` has eigenvalues `e^{iθ_j}` with final angle `φ = 0`. -/
 theorem pivot_merge {X Y Z W : Matrix m m ℂ} (hX : IsUnit X.det) (hY : IsUnit Y.det) (q : ℕ)
     (hcard : Fintype.card m = 4 * (q + 1)) (u : Fin (4 * (q + 1)) → ℂ)
     (hu : (univ : Finset (Fin (4 * (q + 1)))).val.map u = (X⁻¹ * Y).charpoly.roots)
@@ -178,13 +179,13 @@ theorem pivot_merge {X Y Z W : Matrix m m ℂ} (hX : IsUnit X.det) (hY : IsUnit 
     ∃ α β : ℝ, β ∈ Set.Icc 0 Real.pi ∧ gate α β ∈ unitaryGroup (Fin 2) ℂ ∧
       ∃ X' Y' Z' W' : Matrix m m ℂ,
       fromBlocks X Y Z W * lift (gate α β) = fromBlocks X' Y' Z' W' ∧
-      ∃ θ : Fin (4 * (q + 1)) → ℝ,
+      IsUnit X'.det ∧ IsUnit Y'.det ∧ ∃ θ : Fin (4 * (q + 1)) → ℝ,
         (zxzC X' Y').charpoly.roots = (univ : Finset (Fin (4 * (q + 1)))).val.map
           (fun j => exp (θ j * I)) ∧
         finalAngle (q + 1) θ = 0 := by
-  obtain ⟨α, β, hβ, μ, hμ, e, m', h⟩ := exists_pivot hX hY q hcard u hu hline
+  obtain ⟨α, β, hβ, hX', hY', μ, hμ, e, m', h⟩ := exists_pivot hX hY q hcard u hu hline
   refine ⟨α, β, hβ, gate_mem_unitaryGroup α β, _, _, _, _, fromBlocks_mul_lift α β X Y Z W,
-    fun j => μ (e j) + 2 * Real.pi * m' j, ?_, ?_⟩
+    hX', hY', fun j => μ (e j) + 2 * Real.pi * m' j, ?_, ?_⟩
   · -- the shifted, reassigned phases list the same eigenvalues
     change (multiplexor α β X Y).charpoly.roots = _
     rw [hμ]

@@ -3,7 +3,7 @@ import LeanUnitary.Pivot.Path.Gate
 /-!
 # The pivoted multiplexor `C(β)`
 
-`submission/decomposition.tex`, Eqs. 10–11. The Block-ZXZ factorization (arXiv:2403.13692,
+The paper, Eqs. 10–11. The Block-ZXZ factorization (arXiv:2403.13692,
 Sec. 4.1) gives the left-side multiplexor matrix of `U (g ⊗ I)` as
 
     C(β) = -i X_gᴴ (X_g X_gᴴ)^{-1/2} (Y_g Y_gᴴ)^{-1/2} Y_g,

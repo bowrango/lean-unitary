@@ -37,11 +37,12 @@ the Python, and the Python needs no Lean toolchain. The one point of contact is 
 kernel evaluates the CX counts `Pivot.count 10 = 457218` and `Pivot.zxzCount 10 = 479063`, the same
 counts the Python implementation measures.
 
-**What is formalized.** Everything specific to the pivot is proved: the pivot angles exist, the
-final rotation of the left multiplexor vanishes so the extra CX merges, and the recursion gives the
-`(21/48)·4^n` bound. The baseline decompositions (multiplexed rotations, demultiplexing, the
-Block-ZXZ factorization, the two-qubit case) are assumed, and, as in the paper, the pivot is proved
-for generic nodes. See [`LeanUnitary/README.md`](LeanUnitary/README.md) for the module-by-module
+**What is formalized.** The `(21/48)·4^n` bound is proved end to end from circuits
+(`Pivot.Node.pivot_generalBound`): the pivot angles exist, the Block-ZXZ factorization and
+demultiplexing hold, the final rotation of the left multiplexor vanishes, and both CX gates merge
+into the central multiplexor. The only assumptions are the two-qubit base cases (3 CX, and 2 CX up
+to a diagonal) and, as in the paper, the case of non-generic nodes. The library contains no `sorry`.
+See [`LeanUnitary/README.md`](LeanUnitary/README.md) for the module-by-module
 theorems.
 
 ## Setup

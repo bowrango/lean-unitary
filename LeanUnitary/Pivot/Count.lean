@@ -3,7 +3,7 @@ import Mathlib
 /-!
 # CX count of the pivot decomposition
 
-Arithmetic of `submission/decomposition.tex`, Sec. II.D. Block-ZXZ satisfies
+Arithmetic of the paper, Sec. II.D. Block-ZXZ satisfies
 `c_n = 4 c_{n-1} + 3 · 2^{n-1} - 5` (arXiv:2403.13692, Sec. 5.3). The pivot merges one more CX
 at each recursion node (Eq. 18):
 
@@ -12,8 +12,7 @@ at each recursion node (Eq. 18):
 so `c_n = (21/48) 4^n - (3/2) 2^n + 2`, against `(22/48) 4^n - (3/2) 2^n + 5/3` for Block-ZXZ, a
 saving of `Δ_n = (4^{n-2} - 1) / 3` (Eq. 19).
 
-The closed forms are stated in the shape of `LeanUnitary.Spec.BlockZXZ`'s bound, so that once the
-construction is proved, `count_eq` gives a `GeneralBound` with
+`count_eq` gives the bound of `Node.pivot_generalBound`,
 `f n = (21 * 4 ^ n - 72 * 2 ^ n + 96) / 48`.
 -/
 
@@ -71,7 +70,7 @@ theorem count_closed (n : ℕ) (hn : 2 ≤ n) : 48 * count n + 72 * 2 ^ n = 21 *
     rw [h2, h4]
     omega
 
-/-- The Block-ZXZ count is the bound of `LeanUnitary.Spec.BlockZXZ`. -/
+/-- The Block-ZXZ count in closed form, `(22/48) 4^n - (3/2) 2^n + 5/3`. -/
 theorem zxzCount_eq (n : ℕ) (hn : 2 ≤ n) :
     zxzCount n = (22 * 4 ^ n - 72 * 2 ^ n + 80) / 48 := by
   have := zxzCount_closed n hn

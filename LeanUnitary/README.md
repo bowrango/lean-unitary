@@ -1,8 +1,8 @@
 # LeanUnitary
 
 The Lean 4 formalization of the pivot decomposition ([paper](../submission/)), built on
-Mathlib. The circuit model and the synthesis statements are fixed in `Spec.lean`; the pivot
-construction is proved in `Pivot/`.
+Mathlib. The circuit model is in `Spec.lean`; the pivot construction and the end-to-end CX bound
+are proved in `Pivot/`. The library contains no `sorry`.
 
 ![Lean formalization of the pivot decomposition](../submission/diagram.png)
 
@@ -11,13 +11,11 @@ construction is proved in `Pivot/`.
 | Path | Purpose |
 | --- | --- |
 | `../LeanUnitary.lean` | Library root; imports every module below |
-| `Spec.lean` | Fixed circuit model, `Synthesizable n k`, `GeneralBound`, and the milestone statements; do not edit |
-| `Circuit.lean` | Circuit algebra: composition, lifting onto more qubits, CNOT counting |
-| `Blocks.lean` | Bridge from the spec's bit-indexed operators to Mathlib's `Matrix.fromBlocks` |
-| `LinearAlgebra.lean` | Linear-algebra primitives for the baseline decompositions |
-| `Decomposition/` | The baseline milestones (multiplexors, demultiplexing, CSD, two-qubit, QSD, Block-ZXZ), stated and assumed |
-| `Pivot/` | The pivot decomposition, proved (below) |
-| `Claims.lean` | Top-level claims: the milestones and `synth` |
+| `Spec.lean` | Circuit model: gates, circuits, `Synthesizable n k`, `GeneralBound`, `R_y`, `R_z`, multiplexors |
+| `Circuit.lean` | Circuit algebra: composition, lifting onto more qubits (`denote_lift`), CNOT counting |
+| `Blocks.lean` | Bridge from bit-indexed operators to Mathlib's `Matrix.fromBlocks` (`blockDiag_eq`, `mux_last_eq`) |
+| `LinearAlgebra.lean` | The spectral theorem for unitary matrices, by the Cayley transform |
+| `Pivot/` | The pivot decomposition (below) |
 
 ## The pivot formalization, `Pivot/`
 
@@ -42,22 +40,34 @@ proved, and use only the standard axioms (`propext`, `Classical.choice`, `Quot.s
 | `Existence/EigenContinuity.lean` | — | `eventually_exists_perm_close` (eigenvalues of a continuous matrix family move continuously, as matched lists); `norm_le_of_mem_roots_charpoly` |
 | `Existence/PhaseList.lean` | Eq. (11) | `exists_phaseList`; `IsPhaseList.of_sameResidues`; `exists_int_of_exp_eq`; `multiplexor_phases_neg` (the phases of `C(π)` are those of `C(0)` negated); `exists_phase_close` |
 | `Existence/Imbalance.lean` | Eqs. (16), (17) | `imbalance_neg_rev` (`P(π) = −P(0)`); `exists_imbalance_eq_zero` (a root `β*`); `exists_walsh_eq_zero_of_lift` (φ = 0 at `β*`) |
-| `Existence/Pivot.lean` | Eqs. (1)–(3) | `continuousOn_lift` (the normalized lift with sum `σ(β)` is continuous); `exists_pivot_beta`; `exists_pivot` (both pivot angles exist); **`pivot_merge`** (for generic `U`, the pivot gives `U(g⊗I)` a Block-ZXZ multiplexor whose demultiplexing angles have `φ = 0`, so the extra CX merges) |
-| **Synthesis and count** | | |
-| `Synthesis.lean` | Eq. (18) | `generalBound_of_pivot_node` (the 3-CX base case and the pivot node step give `GeneralBound ((21·4^n − 72·2^n + 96)/48)`); `generalBound_of_zxz_node` (with five merges, the Block-ZXZ bound) |
-| `Count.lean` | Eqs. (18), (19) | `count_closed`, `count_eq` (`(21·4^n − 72·2^n + 96)/48`); `zxzCount_eq` (the Spec's Block-ZXZ bound); `saving` (`Δ_n = (4^{n−2} − 1)/3`) |
+| `Existence/Pivot.lean` | Eqs. (1)–(3) | `continuousOn_lift` (the normalized lift with sum `σ(β)` is continuous); `exists_pivot_beta`; `exists_pivot` (both pivot angles exist); **`pivot_merge`** (for generic `U`, the pivot gives `U(g⊗I)` invertible top blocks and a Block-ZXZ multiplexor whose demultiplexing angles have `φ = 0`, so the extra CX merges) |
+| **The node, as circuits** (`Node/`) | | |
+| `Node/TopGates.lean` | Fig. 2 | `R_z`, Hadamard and `CX` onto the top qubit as multiplexors; `mux_mul` (they multiply per basis state); `denote_cxTop` |
+| `Node/Gray.lean` | Eqs. (2), (3) | `grayMux_denote`, `grayMuxRev_denote` (the Gray-code multiplexed `R_z`, `2^n` CX); `core_split` (it ends `CX_0, R_z(φ), CX_{n-1}`); `firstAngle_eq` (`φ` is the mean of `θ⁻`) |
+| `Node/Factor.lean` | Eq. (10) | **`exists_zxz_factor`**: `U = (A₁ ⊕ A₂)(H ⊗ I)(I ⊕ B)(H ⊗ I)(I ⊕ C)` with `C = zxzC X Y` (Krol–Al-Ars Sec. 4.1, proved) |
+| `Node/Demux.lean` | Eqs. (1), (5), (6) | `demux` (demultiplexing, proved); `demux_of_phases` (any listing of the eigenphases of `C`, in any order and branch, is realized) |
+| `Node/Glue.lean` | Fig. 2 | `denote_cxTop_eq` (`CX_c = (H⊗I)(I⊕Z_c)(H⊗I)`, the merge identity); `TopGates.comm_dup_diag` (diagonals pass through the multiplexors) |
+| `Node/Factorize.lean` | Sec. II | `firstAngle_minus_eq_zero` (the paper's `φ = 0` is the last Gray-code angle); `middle_eq` (both CNOTs merge into `B`); **`node_factor`** (a generic node is `(V_a⊕V_a) R_a (V_b⊕V_b) M (W_b⊕W_b) R_c (W_c⊕W_c) (g⊗I)ᴴ` with `R_a`, `M`, `R_c` of `2^n-1`, `2^n`, `2^n-2` CX) |
+| `Node/Synth.lean` | Eqs. (18), (19) | **`node_synth`** (children of `k` CX, `k-1` up to a diagonal, give `4k + 3·2^n - 6`); **`pivot_generalBound`** (the `(21/48) 4^n - (3/2) 2^n + 2` bound, end to end) |
+| **Count** | | |
+| `Count.lean` | Eqs. (18), (19) | `count_closed`, `count_eq` (`(21·4^n − 72·2^n + 96)/48`); `zxzCount_eq` (the Block-ZXZ count); `saving` (`Δ_n = (4^{n−2} − 1)/3`) |
 
-**What is assumed.** The baseline decompositions (multiplexed rotations, demultiplexing, the
-Block-ZXZ factorization with its five CX merges, and the 3-CX two-qubit case) are taken as known.
-They enter `generalBound_of_pivot_node` as two hypotheses: the base case `Synthesizable 2 3` and
-the node step. Everything specific to the pivot is proved: the pivot angles exist, and the
-final rotation vanishes so the sixth CX merges (`pivot_merge`), and the counting (`Count`,
-`Synthesis`).
+**What is assumed.** The end-to-end theorem is `Node.pivot_generalBound`. Its only hypotheses are
 
-**Genericity.** As in the paper, `pivot_merge` assumes a generic node: `X`, `Y` invertible and
-the eigenvalues of `X⁻¹Y` at distinct crossing angles. A bound for every unitary also needs the
-non-generic nodes, either handled directly or by a perturbation argument; that case is not
-formalized.
+* the two-qubit base cases: `Synthesizable 2 3` (Vatan–Williams) and
+  `SynthesizableDiag 2 2` (two CX up to a diagonal; Shende–Bullock–Markov, quant-ph/0308045);
+* the node bound for **non-generic** unitaries, i.e. when `Node.Generic` fails (see below).
+
+Everything between is proved: the pivot angles (`pivot_merge`), the Block-ZXZ factorization
+(`exists_zxz_factor`), demultiplexing with the pivot's eigenphase assignment
+(`demux_of_phases`), the Gray-code multiplexors and their final angle (`Node/Gray.lean`), the two
+CNOT merges into the central multiplexor (`middle_eq`), the diagonal bookkeeping of the children
+(`node_synth`) and the count (`Count`). `pivot_generalBound` uses only the standard axioms.
+
+**Genericity.** As in the paper, the pivot assumes a generic node (`Node.Generic`): `X`, `Y`
+invertible and the eigenvalues of `X⁻¹Y` at distinct crossing angles. A bound for every unitary
+also needs the non-generic nodes, either handled directly or by a perturbation argument; that case
+is the remaining hypothesis of `pivot_generalBound`.
 
 The kernel also evaluates `Pivot.count 10 = 457218` and `Pivot.zxzCount 10 = 479063`, the CX
 counts the Python implementation in `submission/` measures on its synthesized circuits.
@@ -74,8 +84,7 @@ lake build           # build the library
 - **Dependencies:** `.lake/` is not committed. Run `lake exe cache get` before the first `lake build`; without the cache Lake compiles Mathlib from source, which takes hours.
 - **Where code goes:** all definitions and theorems belong in modules under `LeanUnitary/`. `LeanUnitary.lean` holds only `import` lines.
 - **Register new modules:** when you create `LeanUnitary/Foo.lean`, add `import LeanUnitary.Foo` to `LeanUnitary.lean`. `lake build` only compiles modules reachable from it.
-- **Verify:** `lake build` must succeed after every change. `sorry` is allowed in work in progress; a result counts as proved only when nothing it depends on uses `sorry`.
-- **Fixed statements:** `LeanUnitary/Spec.lean` (the circuit model and the target statements) and the statements in `LeanUnitary/Claims.lean` are not edited; only proofs, and the bound in `Claims.synth`, change.
+- **Verify:** `lake build` must succeed after every change, with no `sorry`; check new results with `#print axioms`.
 - **Don't change dependency pins:** leave `lean-toolchain`, `lake-manifest.json`, and the `rev`s in `lakefile.toml` alone, and don't run `lake update` (see [Dependencies](#dependencies)).
 
 ## Dependencies

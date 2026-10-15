@@ -4,7 +4,7 @@ import LeanUnitary.Pivot.Path.Eigenvalues
 /-!
 # Continuity of `C(β)` along the pivot path
 
-`submission/decomposition.tex`, Sec. II.C: "choosing `α` with no real `τ_k` keeps `X_g`, `Y_g`
+The paper, Sec. II.C: "choosing `α` with no real `τ_k` keeps `X_g`, `Y_g`
 invertible and `C(β)` continuous". This module proves:
 
 * `continuousOn_invSqrt`: `A ↦ A^{-1/2}` is continuous along any continuous family of positive

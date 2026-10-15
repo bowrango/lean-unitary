@@ -3,7 +3,7 @@ import LeanUnitary.Pivot.Multiplexor.Continuity
 /-!
 # The phase of `det C(β)`
 
-`submission/decomposition.tex`, Eqs. 12–14. The paper follows the continuous phase `σ(β)` of
+The paper, Eqs. 12–14. The paper follows the continuous phase `σ(β)` of
 `det C(β)` along the pivot path. This module constructs it explicitly. With `D` divisible by
 four, `det C(β)` is a positive multiple of `det Y_g / det X_g = ∏_k (c τ_k - s)/(c + s τ_k)`
 (Eq. 12). For nonreal `τ_k` and `β ∈ [0, π]`, both `c τ_k - s` and `c + s τ_k` stay in the closed

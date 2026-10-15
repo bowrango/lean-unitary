@@ -3,6 +3,7 @@
 \usepackage[margin=0.5in]{geometry}
 \usepackage{tikz}
 \usepackage{amsmath}
+\usepackage{xcolor}
 
 \usetikzlibrary{
     arrows.meta,
@@ -55,43 +56,38 @@
 \node[head] (hl) at (\xl, -3.3) {LeanUnitary};
 \node[head] (hr) at (\xr, -3.3) {Pivot algorithm};
 
-% #1 row index, #2 node above, #3 left block, #4 right step; the right box mirrors the left one
+% #1 row index, #2 node above, #3 left block, #4 right step; all rows share one height
 \newcommand{\row}[4]{%
-    \node[col, anchor=north] (t#1) at ($(xl |- #2.south) + (0, -0.32)$) {#3};
-    \node[draw, rounded corners=3pt, fill=white, inner sep=0pt,
-        fit={($(t#1.north west) + (\dx, 0)$) ($(t#1.south east) + (\dx, 0)$)}] (a#1) {};
-    \node[align=center] at (a#1.center) {#4};
-    \draw[arrow] (t#1.east) -- (a#1.west);
+    \node[col, minimum height=2.35cm, anchor=north] (l#1) at ($(xl |- #2.south) + (0, -0.32)$) {#3};
+    \node[col, minimum height=2.35cm, anchor=north] (a#1) at ($(xr |- #2.south) + (0, -0.32)$) {#4};
 }
 
-\row{1}{hl}
-    {\step{Path/}{the pivot gate is unitary and\\rotates the top-row blocks}}
-    {\step{1.\ Pivot}{apply a single-qubit gate $g$\\to the top qubit}}
-\row{2}{t1}
-    {\step{Multiplexor/}{the left multiplexor is unitary, continuous,\\and inverts between the path endpoints}}
-    {\step{2.\ Block-ZXZ factor}{form the left-side multiplexor\\of the pivoted unitary}}
-\row{3}{t2}
-    {\step{Split}{the extra CX merges exactly when\\the eigenphases split evenly}}
-    {\step{3.\ Demultiplex}{assign eigenphases to basis states\\so the final rotation vanishes}}
-\row{4}{t3}
-    {\step{Existence/}{pivot angles giving a balanced\\split always exist}}
-    {\step{4.\ Choose the pivot}{fix one angle, then find the other\\by a sign change}}
-\row{5}{t4}
-    {\step{Synthesis}{the pivot recursion gives\\the general CX bound}}
-    {\step{5.\ Recurse}{Block-ZXZ recursion with one\\extra CX merge per node}}
-\row{6}{t5}
-    {\step{Count}{the CX recurrence and\\its closed form}}
-    {\step{6.\ Count}{one CX saved per recursion\\node over Block-ZXZ}}
+% modules, and the algorithm steps they verify
+\newcommand{\mods}[1]{{\footnotesize\ttfamily #1}}
+\newcommand{\vtag}[1]{{\footnotesize\color{black!55}\itshape #1}}
 
-\foreach \i [evaluate=\i as \j using int(\i+1)] in {1,...,5} {
+\row{1}{hl}
+    {\step{Circuit model}{\mods{Spec, Circuit, Blocks, LinearAlgebra}\\gates, circuits, block matrices, and\\the spectral theorem for unitaries\\\vtag{used by every step}}}
+    {\step{1.\ Choose the pivot}{fix $\alpha$ so half the $\tau_k$ lie above the\\real axis, then root-search $\beta$}}
+\row{2}{l1}
+    {\step{Pivot existence}{\mods{Path/, Multiplexor/, Split, Existence/}\\for a generic unitary, pivot angles\\giving a balanced split exist\\\vtag{verifies steps 1 and 3}}}
+    {\step{2.\ Block-ZXZ factor}{factor the pivoted unitary $U(g\otimes I)$\\into three multiplexors}}
+\row{3}{l2}
+    {\step{Node}{\mods{Node/}\\Block-ZXZ factorization, demultiplexing,\\Gray-code multiplexors and CX merges\\\vtag{verifies steps 2--4}}}
+    {\step{3.\ Demultiplex}{assign the eigenphases as a balanced\\split, so the final rotation $\varphi=0$}}
+\row{4}{l3}
+    {\step{Count}{\mods{Count}\\the CX recurrence, its closed form,\\and the saving over Block-ZXZ\\\vtag{verifies step 4}}}
+    {\step{4.\ Merge and recurse}{two CX gates merge into the central\\multiplexor: one CX saved per node}}
+
+\foreach \i [evaluate=\i as \j using int(\i+1)] in {1,...,3} {
     \draw[arrow] (a\i.south) -- (a\j.north);
 }
 
 \begin{scope}[on background layer]
 \node[draw, rounded corners=6pt, fill=gray!7, inner sep=0.25cm,
-    fit=(hl) (t1) (t6)] (lean) {};
+    fit=(hl) (l1) (l4)] (lean) {};
 \node[draw, rounded corners=6pt, fill=gray!7, inner sep=0.25cm,
-    fit=(hr) (a1) (a6)] (alg) {};
+    fit=(hr) (a1) (a4)] (alg) {};
 \end{scope}
 
 % Mathlib, the only dependency, directly above the LeanUnitary box and as wide
@@ -105,9 +101,10 @@
 % ============================================================
 
 \node[wide, below=0.9cm of $(lean.south)!0.5!(alg.south)$] (claim) {
-    \mbox{\textbf{\texttt{generalBound\_of\_pivot\_node}}: \
+    \mbox{\textbf{\texttt{pivot\_generalBound}}: \
     $\mathrm{GeneralBound}\big(\tfrac{21}{48}\,4^n-\tfrac32\,2^n+2\big)$}\\[2pt]
-    every $n$-qubit unitary is exactly a circuit with at most that many CX gates
+    every $n$-qubit unitary is exactly a circuit with at most that many CX gates\\[1pt]
+    {\footnotesize\itshape assuming the two-qubit base cases (3 CX, and 2 CX up to a diagonal) and generic nodes}
 };
 
 \draw[arrow] (lean.south) -- (lean.south |- claim.north);
@@ -116,9 +113,8 @@
 \end{tikzpicture}
 
 \caption{
-Lean formalization of our proposed pivot decomposition. Each theorem module on the left
-verifies the step of the pivot algorithm on its right using Mathlib's linear
-algebra and the circuit model of LeanUnitary.
+Lean formalization of the pivot decomposition. The modules of LeanUnitary (left) are
+tagged with the steps of the pivot algorithm (right) they verify.
 }
 
 \label{fig:lean-unitary}

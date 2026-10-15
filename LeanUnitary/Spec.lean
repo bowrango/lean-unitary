@@ -1,10 +1,7 @@
 import Mathlib
 
 /-!
-# Frozen specification (lean-unitary hills)
-
-**Do not edit.** The evaluators overwrite this file with their own frozen copy before
-building, so changes here are discarded at scoring time.
+# Circuit model
 
 This fixes what "synthesize an `n`-qubit unitary with `k` CNOTs" means:
 
@@ -17,10 +14,6 @@ This fixes what "synthesize an `n`-qubit unitary with `k` CNOTs" means:
 
 Qubit `q` is bit `q` of the basis-state index, i.e. `Nat.testBit i q`; qubit `n` is the most
 significant ("top") qubit of an `(n + 1)`-qubit register.
-
-It also states the milestones scored by the `lean-unitary-baselines` hill (the building
-blocks of the quantum Shannon and block-ZXZ decompositions) and the general-`n` claim scored
-by the `lean-unitary` hill.
 -/
 
 namespace LeanUnitary.Spec
@@ -72,7 +65,7 @@ def Synthesizable (n k : ℕ) : Prop :=
     ∃ c : Circuit n, c.denote = U ∧ c.cnotCount ≤ k
 
 /-- A synthesis algorithm for every register of at least two qubits, using at most `f n`
-CNOTs on `n` qubits. This is the claim scored by the `lean-unitary` hill. -/
+CNOTs on `n` qubits. -/
 def GeneralBound (f : ℕ → ℕ) : Prop :=
   ∀ n, 2 ≤ n → Synthesizable n (f n)
 
@@ -107,50 +100,5 @@ noncomputable def blockDiag {n : ℕ} (A B : Op n) : Op (n + 1) := fun i j =>
     (if (i : ℕ).testBit n then B else A)
       ⟨i % 2 ^ n, Nat.mod_lt _ (by positivity)⟩ ⟨j % 2 ^ n, Nat.mod_lt _ (by positivity)⟩
   else 0
-
-/-! ## Milestones (scored by the `lean-unitary-baselines` hill) -/
-
-/-- Multiplexed `R_y` and `R_z` rotations with `n - 1` controls cost at most `2^(n-1)` CNOTs
-(Gray-code construction; Möttönen et al., Shende–Markov–Bullock §4). -/
-def MuxRotations : Prop :=
-  ∀ (n : ℕ) (t : Fin n) (θ : ℕ → ℝ),
-    (∃ c : Circuit n, c.denote = mux t (fun k => Ry (θ k)) ∧ c.cnotCount ≤ 2 ^ (n - 1)) ∧
-    (∃ c : Circuit n, c.denote = mux t (fun k => Rz (θ k)) ∧ c.cnotCount ≤ 2 ^ (n - 1))
-
-/-- Demultiplexing (Shende–Markov–Bullock Thm 12): `A ⊕ B = (V ⊕ V) · D · (W ⊕ W)` with `D` a
-multiplexed `R_z` on the top qubit. -/
-def Demultiplex : Prop :=
-  ∀ (n : ℕ) (A B : Op n),
-    A ∈ Matrix.unitaryGroup (Fin (2 ^ n)) ℂ → B ∈ Matrix.unitaryGroup (Fin (2 ^ n)) ℂ →
-    ∃ (V W : Op n) (θ : ℕ → ℝ),
-      V ∈ Matrix.unitaryGroup (Fin (2 ^ n)) ℂ ∧ W ∈ Matrix.unitaryGroup (Fin (2 ^ n)) ℂ ∧
-      blockDiag A B = blockDiag V V * mux (Fin.last n) (fun k => Rz (θ k)) * blockDiag W W
-
-/-- Cosine–sine decomposition: `U = (A₀ ⊕ A₁) · Y · (B₀ ⊕ B₁)` with `Y` a multiplexed `R_y` on
-the top qubit. -/
-def CosineSine : Prop :=
-  ∀ (n : ℕ) (U : Op (n + 1)), U ∈ Matrix.unitaryGroup (Fin (2 ^ (n + 1))) ℂ →
-    ∃ (A₀ A₁ B₀ B₁ : Op n) (θ : ℕ → ℝ),
-      A₀ ∈ Matrix.unitaryGroup (Fin (2 ^ n)) ℂ ∧ A₁ ∈ Matrix.unitaryGroup (Fin (2 ^ n)) ℂ ∧
-      B₀ ∈ Matrix.unitaryGroup (Fin (2 ^ n)) ℂ ∧ B₁ ∈ Matrix.unitaryGroup (Fin (2 ^ n)) ℂ ∧
-      U = blockDiag A₀ A₁ * mux (Fin.last n) (fun k => Ry (θ k)) * blockDiag B₀ B₁
-
-/-- Every two-qubit unitary needs at most 3 CNOTs (Vatan–Williams; meets the lower bound). -/
-def TwoQubitOptimal : Prop :=
-  Synthesizable 2 3
-
-/-- The quantum Shannon decomposition, recursing down to single qubits:
-`c(1) = 0`, `c(n+1) = 4 c(n) + 3 · 2^n`, i.e. `(3/4) 4^n - (3/2) 2^n` CNOTs. -/
-def QSD : Prop :=
-  ∀ n, 1 ≤ n → Synthesizable n ((3 * 4 ^ n - 6 * 2 ^ n) / 4)
-
-/-- QSD with the two-qubit base case and the optimizations of Shende–Markov–Bullock
-(Appendix A): `(23/48) 4^n - (3/2) 2^n + 4/3` CNOTs. -/
-def QSDOptimized : Prop :=
-  GeneralBound fun n => (23 * 4 ^ n - 72 * 2 ^ n + 64) / 48
-
-/-- The block-ZXZ decomposition (arXiv:2403.13692): `(22/48) 4^n - (3/2) 2^n + 5/3` CNOTs. -/
-def BlockZXZ : Prop :=
-  GeneralBound fun n => (22 * 4 ^ n - 72 * 2 ^ n + 80) / 48
 
 end LeanUnitary.Spec

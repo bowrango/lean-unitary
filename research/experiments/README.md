@@ -82,6 +82,8 @@ where 1 means meeting the Shende–Markov–Bullock lower bound. Block-ZXZ score
 | `fold_ivt.py`, `pfaff.py`, `pfaff_general.py` | parity rule, Pfaffian sign change and IVT root for the fold condition |
 | `dfold.py`, `dfold_synth.py` | both folds by numerical root-finding: verified 17-CNOT 3-qubit circuits |
 | `skel3.py` | universality of the 3-qubit block-ZXZ skeleton with one CNOT deleted |
+| `parallel_pivot.py` | **carry-free, level-parallel pivot synthesis with a Möbius prefix scan over the leaf carries (section 11)**; `--triple` adds the fold of `triple_fold.py` |
+| `triple_fold.py` | **a third folded CX on the input side at every node of ≥ 4 qubits: a 2-D search per node, 89 / 397 / 1677 / 6893 / 27949 CNOTs at n = 4…8 (section 11)** |
 
 ## 1. Where the CNOTs go
 
@@ -390,6 +392,81 @@ apply directly.
 **For Lean.** The proof uses exterior powers, a Pfaffian, eigenvalue continuity along a path, the
 IVT and a compactness closure. That is substantial Mathlib work, but it is a finished mathematical
 argument, not an open problem.
+
+## 11. Node searches are local and independent; one more fold per large node (20.75/48, numerical)
+
+**Question.** Each pivot-type saving replaces a free choice with a small root search. Do these
+searches stay low-dimensional, and can they run independently (in parallel)?
+
+**Independence.** The reference `synth` is a depth-first walk: each child is multiplied by the
+previous child's diagonal carry *before* it is decomposed, so every node waits for all nodes before
+it in time. That dependency is not needed.
+
+- A carry Δ lives on the bottom two qubits, which are lower qubits of every node with ≥ 3 qubits.
+  Right-multiplying a node by I ⊗ Δ gives X → XΔ and Y → YΔ, hence C → Δ†CΔ and
+  A1A2† → A1A2† (A1 → A1Δ, A2 → A2Δ). Every fold condition depends only on these spectra, so
+  every node's search depends only on the node's own unitary.
+- Δ commutes with the pivot gate, the multiplexors and the top-qubit Hadamards, so it travels to
+  the node's *first leaf*. The only remaining sequential coupling is the chain of 2-qubit leaves.
+- **The leaf chain is a product of 2×2 matrices.** With an input carry exp(ih Z⊗Z), the
+  "2 CNOTs up to a diagonal" condition (tr γ real) fixes the output carry exp(ig Z⊗Z) by
+  w = (p z + q)/(q̄ z + p̄), where z = e^{4ih}, w = e^{4ig},
+  T_st = tr(P_s U P_t YY Uᵀ YY), p = T₊₊ − conj(T₋₋) and q = T₊₋ − conj(T₋₊). This is a
+  Möbius map, so all carries follow from a prefix scan of depth log₂(#leaves).
+
+`parallel_pivot.py` runs three phases: (1) all nodes of a level in parallel, (2) a Möbius scan,
+(3) all leaves in parallel. Same CX counts as `decomposition.py`, error ≤ 1e-12 by state-vector
+check up to n = 9, and the scanned carries match the true ones to ≤ 6e-11.
+
+None of this is specific to the pivot: `--zxz` runs plain Block-ZXZ nodes through the same three
+phases, so like is compared with like. Wall time, seed 0, 8 workers on the same machine, measured
+with the earlier Brent root search (the Newton search now in `decomposition.py` lowers both pivot columns):
+
+| n | Block-ZXZ seq. | pivot seq. | ratio | Block-ZXZ par. | pivot par. | ratio |
+| --- | --- | --- | --- | --- | --- | --- |
+| 8 | 1.91 s | 4.23 s | 2.22 | 1.23 s | 1.86 s | 1.51 |
+| 9 | 7.82 s | 18.5 s | 2.37 | 3.12 s | 6.16 s | 1.97 |
+| 10 | 33.9 s | 82.4 s | 2.43 | 11.8 s | 26.1 s | 2.20 |
+
+The pivot's relative overhead is about the same in both settings, so the sequential comparison in
+the paper stands. Parallelism doesn't hide the cost of the root searches; the serial root search
+keeps the parallel ratio close to the sequential one as n grows.
+
+**A low-dimensional next fold (`triple_fold.py`).** Zeroing the second-to-last Gray angle of the
+input-side multiplexor as well folds a *third* CX (on bit 1) into the central factor, which becomes
+z_hi · Z0 Z1 on B's right. With gray[d−2] = top bit + bit 0, the two conditions become two
+equal-sum conditions on quarters Q_ab of C's eigenphases (a = top bit, b = bit 0, |Q| = d/4):
+Q00 ≡ Q10 and Q01 ≡ Q11 (mod 2π).
+
+- **3-qubit nodes: impossible.** With d = 4 each quarter is a single eigenphase, so the
+  conditions are eigenvalue coincidences of C (codimension 3). The search stalls at residuals of
+  0.4 to 1.3 on 5 of 5 targets.
+- **Nodes of ≥ 4 qubits: works.** The input gate has two effective parameters, because a leading
+  R_z only rotates C's whole spectrum. Two conditions in two unknowns give isolated roots. Found on
+  every node tried (exhaustive assignment at d = 8, greedy-swap assignment plus a fixed-label 2×2
+  solve for d ≥ 16; 341 nodes per n = 8 target), with no failures. The conditions are invariant
+  under carries, so the search plugs into the parallel pipeline unchanged (`--triple`).
+- **Counts** (verified exactly or by state vector): c₃ = 18, c_n = 4c_{n−1} + 3·2^(n−1) − 7, i.e.
+
+| n | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|
+| pivot (section 10) | 90 | 402 | 1698 | 6978 | 28290 |
+| **+ third C-side fold** | **89** | **397** | **1677** | **6893** | **27949** |
+
+  c_n = (83/192)·4^n − (3/2)·2^n + 7/3, a leading coefficient of **20.75/48** (pivot: 21/48).
+  Existence is numerical only. With two equations in two unknowns there is no sign change to
+  bracket, so the IVT argument of section 10 does not carry over.
+
+**What this says about the open question.** Fold-type savings stay node-local and of constant
+dimension: one condition per folded CX, solved with that node's free top-qubit parameters, and
+independent across a level. But they are budget-limited. The input gate offers 2 effective
+parameters, so the C side stops at 3 folded CX, and the output gate offers about 2 more for the A
+side. A further zero also needs finer eigenphase classes, so it only becomes generic at larger
+nodes, and a saving at m-qubit nodes is worth 4^(3−m)/48. If the A side matched the C side (1 extra
+at 3 qubits, 2 at ≥ 4), the family would reach about 19.5/48. That is a projection, not tested.
+Closing the remaining gap needs non-local changes such as the round-robin glue of section 8, where
+the search becomes one global system with thousands of isolated solutions (section 9), not
+independent small ones.
 
 ## Open directions
 

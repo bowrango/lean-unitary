@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Level-parallel pivot synthesis: independent node searches plus a Moebius scan over leaves.
 
-The sequential reference (submission/decomposition.py, `synth`) walks the recursion tree depth
+A depth-first recursion (as in Sec. II of the paper) walks the recursion tree depth
 first. It multiplies each child by the diagonal carry of the previous child before decomposing
 it, so every node waits for all nodes before it in time order. This script removes that
 dependency in three phases.
@@ -289,7 +289,7 @@ def main(argv=None):
                           f"longest node={span:7.4f}s  searches={search / work:5.1%} of work  wall={lw:.3f}s")
                 if args.compare:
                     t0 = time.perf_counter()
-                    rc, _ = dc.decompose(U)
+                    rc, _ = dc.synth(U)
                     print(f"    sequential reference: {dc.cnot_count(rc)} CX in {time.perf_counter() - t0:.2f}s")
     finally:
         if pool:

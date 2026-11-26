@@ -21,41 +21,31 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from decomposition import (
-    H, Z, block_diag, block_zxz, cnot_count, cnot_formula,
-    demultiplex, embed, leaf, mux_rot, random_unitary, synth, zxz_formula,
+    H, Z, block_zxz, cnot_count, cnot_formula,
+    demultiplex, embed, level_synth, mux_rot, random_unitary, synth, zxz_formula,
 )
 
 
 # Baseline synthesis
 
 
-def baseline_synth(
-    U: np.ndarray, n: int, want_diag: bool = False,
-) -> tuple[list[tuple], np.ndarray]:
-    """Block-ZXZ with the standard boundary folds and diagonal propagation."""
-    if n == 1:
-        return [("u", 0, U)], np.eye(2, dtype=complex)
-    if n == 2:
-        return leaf(U, want_diag)
+def zxz_node(U: np.ndarray, n: int):
+    """Factor one Block-ZXZ node with the standard boundary folds and no pivot."""
     m, top = 2 ** (n - 1), n - 1
     A1, A2, B, C = block_zxz(U)
     Va, theta_a, Wa = demultiplex(A1, A2)
     Vc, theta_c, Wc = demultiplex(np.eye(m, dtype=complex), C)
     z = embed(Z, [n - 2], n - 1)
     Vb, theta_b, Wb = demultiplex(Wa @ Vc, z @ Wa @ B @ Vc @ z)
-
     mux_c = mux_rot(theta_c, n)[:-1]
     mux_a = mux_rot(theta_a, n)[::-1][1:]
     mux_b = [("u", top, H)] + mux_rot(theta_b, n) + [("u", top, H)]
-    circuit = []
-    carry = np.eye(m, dtype=complex)
-    children = [Wc, Wb, Vb, Va]
-    for i, (child, mux) in enumerate(zip(children, [mux_c, mux_b, mux_a, []])):
-        sub, carry = baseline_synth(
-            child @ carry, n - 1, want_diag=want_diag or i < len(children) - 1
-        )
-        circuit += sub + mux
-    return circuit, block_diag(carry, carry)
+    return np.eye(2, dtype=complex), [Wc, Wb, Vb, Va], [mux_c, mux_b, mux_a, []]
+
+
+def baseline_synth(U: np.ndarray) -> tuple[list[tuple], np.ndarray]:
+    """Block-ZXZ on the same level-by-level schedule as synth."""
+    return level_synth(U, lambda nodes, n: [zxz_node(V, n) for V in nodes])
 
 
 def compare(ns, samples: int = 1, seed: int = 0):
@@ -70,7 +60,7 @@ def compare(ns, samples: int = 1, seed: int = 0):
                 ("ours", synth, cnot_formula),
             ):
                 start = perf_counter()
-                circuit, _ = method(U, n)
+                circuit, _ = method(U)
                 elapsed = perf_counter() - start
                 count = cnot_count(circuit)
                 assert count == formula(n), f"{name}: unexpected CX count {count}"

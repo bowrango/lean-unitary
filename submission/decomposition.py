@@ -3,8 +3,9 @@
 
 Requires Python >= 3.10, NumPy, and SciPy.
 Run: python decomposition.py 3 4 5 --seed 0 --samples 1
-For a unitary U of dimension 2**n, decompose(U) returns (circuit, diagonal):
-U = diagonal @ circuit_matrix(circuit, n), up to numerical precision.
+For a unitary U of dimension 2**n, synth(U) returns (circuit, diagonal) with
+U = diagonal @ circuit_matrix(circuit, n), up to numerical precision. A batch of
+unitaries (m, 2**n, 2**n) gives a list of such pairs.
 
 Qubit q is bit q of a basis index. Gate tuples are in execution order:
 ("u", q, matrix) and ("cx", control, target). The two-qubit leaves use the algebraic
@@ -287,75 +288,96 @@ def _choose_alpha(rho: np.ndarray) -> tuple[float, np.ndarray]:
     return best[1], best[2]
 
 
-def _imbalance_and_slope(
-    beta: float, K: np.ndarray, A: np.ndarray, B: np.ndarray, tau: np.ndarray,
-) -> tuple[float, float]:
-    """Imbalance P(beta) of Eq. (P) and its derivative.
+def _imbalance_and_slope(beta, K, A, B, arg_sum, tau, sign):
+    """Imbalance P(beta) of Eq. (P) and its derivative for a stack of m nodes.
 
-    With M = K + cos(beta) A + sin(beta) B = W diag(s) V^dagger, C = -i W V^dagger, and the
-    polar factor has derivative W Omega V^dagger with Omega_ij = (G_ij - conj(G_ji)) / (s_i + s_j)
-    and G = W^dagger M' V. Each eigenphase of C moves by Im(conj(lambda) v^dagger C' v).
+    beta has shape (m,), K, A, B shape (m, d, d) and tau shape (m, d). With
+    M = K + cos(beta) A + sin(beta) B = W diag(s) V^dagger, C = -i W V^dagger. The polar factor
+    has derivative W Omega V^dagger with Omega_ij = (G_ij - conj(G_ji)) / (s_i + s_j) and
+    G = W^dagger M' V, and each eigenphase of C moves by Im(conj(lambda) v^dagger C' v).
     """
-    M = K + np.cos(beta) * A + np.sin(beta) * B
-    dM = -np.sin(beta) * A + np.cos(beta) * B
-    W, s, Vh = np.linalg.svd(M)
-    G = W.conj().T @ dM @ Vh.conj().T
-    C = -1j * (W @ Vh)
-    dC = -1j * (W @ ((G - G.conj().T) / (s[:, None] + s[None, :])) @ Vh)
-    Ch = C.conj().T
-    _, V = sl.eigh((C + Ch) / 2 + GAMMA * (C - Ch) / 2j, driver="evd")
-    lam = np.einsum("ij,ij->j", V.conj(), C @ V)
+    def herm(X):
+        return X.conj().transpose(0, 2, 1)
+
+    c, s = np.cos(beta)[:, None, None], np.sin(beta)[:, None, None]
+    W, sv, Vh = np.linalg.svd(K + c * A + s * B)
+    G = herm(W) @ (c * B - s * A) @ herm(Vh)
+    Q = W @ Vh
+    dQ = W @ ((G - herm(G)) / (sv[:, :, None] + sv[:, None, :])) @ Vh
+    # Hermitian pencil of C = -iQ, as in unitary_phases
+    _, V = np.linalg.eigh(-0.5j * (Q - herm(Q)) - 0.5 * GAMMA * (Q + herm(Q)))
+    lam = -1j * (V.conj() * (Q @ V)).sum(1)
+    dmu = (lam.conj() * -1j * (V.conj() * (dQ @ V)).sum(1)).imag
     mu = np.angle(lam)
-    dmu = (np.conj(lam) * np.einsum("ij,ij->j", V.conj(), dC @ V)).imag
 
     # Rank the phases and lift them to one turn whose sum is the determinant phase sigma(beta).
-    c, sn = np.cos(beta / 2), np.sin(beta / 2)
-    sigma = np.sum(np.angle(tau) + np.angle(c - sn / tau) - np.angle(c + sn * tau))
-    shift = round((sigma - mu.sum()) / (2 * np.pi)) % len(mu)
-    order = np.roll(np.argsort(mu), -shift)
-    nu = mu[order]
-    nu[len(mu) - shift:] += 2 * np.pi
-    q = len(mu) // 4
-    sign = np.r_[-np.ones(q), np.ones(2 * q), -np.ones(q)]
-    return float(sign @ nu / 2), float(sign @ dmu[order] / 2)
+    ch, sh = np.cos(beta / 2)[:, None], np.sin(beta / 2)[:, None]
+    sigma = arg_sum + (np.angle(ch - sh / tau) - np.angle(ch + sh * tau)).sum(1)
+    d = mu.shape[1]
+    shift = np.round((sigma - mu.sum(1)) / (2 * np.pi)).astype(int) % d
+    rank = (np.arange(d)[None, :] + shift[:, None]) % d
+    order = np.take_along_axis(np.argsort(mu, axis=1), rank, axis=1)
+    nu = np.take_along_axis(mu, order, axis=1)
+    nu += 2 * np.pi * (np.arange(d)[None, :] >= d - shift[:, None])
+    return nu @ sign / 2, np.take_along_axis(dmu, order, axis=1) @ sign / 2
 
 
-def find_pivot(U: np.ndarray, maxiter: int = 60) -> tuple[float, float]:
-    """Find pivot angles (alpha, beta) with a balanced split, for a generic target.
+def find_pivot(U: np.ndarray, maxiter: int = 60, polish: float = 1e-8):
+    """Find pivot angles (alpha, beta) with a balanced split for one generic node or a stack.
+
+    U is one node (d, d), giving (alpha, beta), or a stack (m, d, d), giving a list of them.
 
     alpha gives equal half-plane counts of the tau_k. Since P(pi) = -P(0), [0, pi] brackets a
     root of P without evaluating P(pi). Newton steps with the analytic slope start from the root
     of the quadratic through P(0), P'(0) and P(pi), with bisection whenever a step leaves the
-    bracket or converges slowly.
+    bracket or converges slowly. Once |P| <= polish, the next Newton step is accepted without
+    evaluation, since its residual is of order |P|^2. All nodes iterate together.
     """
-    D = len(U) // 2
-    X, Y = U[:D, :D], U[:D, D:]
-    alpha, tau = _choose_alpha(np.linalg.eigvals(np.linalg.solve(X, Y)))
-    cross = np.exp(1j * alpha) * (X.conj().T @ Y)
-    A, K = (cross + cross.conj().T) / 2, (cross - cross.conj().T) / 2
-    B = (Y.conj().T @ Y - X.conj().T @ X) / 2
+    Us = np.asarray(U)
+    if Us.ndim == 2:
+        return find_pivot(Us[None], maxiter, polish)[0]
+    m, D = len(Us), Us.shape[1] // 2
+    X, Y = Us[:, :D, :D], Us[:, :D, D:]
+    alpha, tau = map(np.array, zip(*(
+        _choose_alpha(rho) for rho in np.linalg.eigvals(np.linalg.solve(X, Y)))))
+    Xh = X.conj().transpose(0, 2, 1)
+    cross = np.exp(1j * alpha)[:, None, None] * (Xh @ Y)
+    crossh = cross.conj().transpose(0, 2, 1)
+    A, K = (cross + crossh) / 2, (cross - crossh) / 2
+    B = (Y.conj().transpose(0, 2, 1) @ Y - Xh @ X) / 2
+    q = D // 4
+    sign = np.r_[-np.ones(q), np.ones(2 * q), -np.ones(q)]
+    arg_sum = np.angle(tau).sum(1)
     tol = ROOT_TOL / 4
 
-    f0, d0 = _imbalance_and_slope(0.0, K, A, B, tau)
-    if abs(f0) <= tol:
-        return alpha, 0.0
-    curv = (-2 * f0 - d0 * np.pi) / np.pi**2
-    roots = [t.real for t in np.roots([curv, d0, f0]) if abs(t.imag) < 1e-12 and 0 < t.real < np.pi]
-    beta = min(roots, key=lambda t: abs(t - np.pi / 2)) if roots else np.pi / 2
-    lo, hi, width = 0.0, np.pi, np.pi
+    f0, d0 = _imbalance_and_slope(np.zeros(m), K, A, B, arg_sum, tau, sign)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        curv = (-2 * f0 - d0 * np.pi) / np.pi**2
+        disc = np.sqrt(d0 * d0 - 4 * curv * f0)
+        roots = np.stack([(-d0 + disc) / (2 * curv), (-d0 - disc) / (2 * curv)])
+    dist = np.where((roots > 0) & (roots < np.pi), np.abs(roots - np.pi / 2), np.inf)
+    pick = np.take_along_axis(roots, dist.argmin(0)[None], 0)[0]
+    beta = np.where(np.isfinite(dist.min(0)), pick, np.pi / 2)
+    out = np.zeros(m)
+    todo = np.abs(f0) > tol
+    lo, hi, width = np.zeros(m), np.full(m, np.pi), np.full(m, np.pi)
     for _ in range(maxiter):
-        f, df = _imbalance_and_slope(beta, K, A, B, tau)
-        if abs(f) <= tol or hi - lo <= 1e-15:
-            assert 2 * abs(f) <= TOL, "Pivot search did not converge"
-            return alpha, beta
-        if np.signbit(f) == np.signbit(f0):
-            lo = beta
-        else:
-            hi = beta
-        step = beta - f / df
-        if not lo < step < hi or abs(f) > 0.5 * width * abs(df):
-            step = (lo + hi) / 2
-        width, beta = hi - lo, step
+        idx = np.flatnonzero(todo)
+        if not len(idx):
+            return list(zip(alpha.tolist(), out.tolist()))
+        b = beta[idx]
+        f, df = _imbalance_and_slope(b, K[idx], A[idx], B[idx], arg_sum[idx], tau[idx], sign)
+        done = (np.abs(f) <= tol) | (hi[idx] - lo[idx] <= 1e-15)
+        same = np.signbit(f) == np.signbit(f0[idx])
+        lo[idx], hi[idx] = np.where(same, b, lo[idx]), np.where(same, hi[idx], b)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            step = b - f / df
+        newton = (lo[idx] < step) & (step < hi[idx]) & (np.abs(f) <= 0.5 * width[idx] * np.abs(df))
+        accept = newton & (np.abs(f) <= polish) & ~done
+        out[idx] = np.where(done, b, step)
+        todo[idx] = ~(done | accept)
+        width[idx] = hi[idx] - lo[idx]
+        beta[idx] = np.where(newton, step, (lo[idx] + hi[idx]) / 2)
     raise AssertionError("Pivot search did not converge")
 
 
@@ -393,44 +415,74 @@ def apply_pivot(U: np.ndarray, u: np.ndarray) -> np.ndarray:
     )
 
 
-def synth(
-    U: np.ndarray, n: int, want_diag: bool = False,
-) -> tuple[list[tuple], np.ndarray]:
-    """Return a circuit and diagonal carry representing U."""
-    if n == 1:
-        return [("u", 0, U)], np.eye(2, dtype=complex)
-    if n == 2:
-        return leaf(U, want_diag)
+def pivot_node(U: np.ndarray, n: int, pivot: tuple[float, float]):
+    """Factor one node with its pivot: the pivot gate, four children and three multiplexors."""
     top = n - 1
-    alpha, beta = find_pivot(U)
-    u = rz(alpha) @ ry(beta)
+    u = rz(pivot[0]) @ ry(pivot[1])
     A1, A2, B, C = block_zxz(apply_pivot(U, u))
-
     Va, theta_a, Wa = demultiplex(A1, A2)
     Vc, theta_c, Wc = demux_double_fold(C)
     z_hi = embed(Z, [n - 2], n - 1)
     z_both = z_hi @ embed(Z, [0], n - 1)
     Vb, theta_b, Wb = demultiplex(Wa @ Vc, z_hi @ Wa @ B @ Vc @ z_both)
-
     mux_c = mux_rot(theta_c, n)[:-3]
     mux_a = mux_rot(theta_a, n)[::-1][1:]
     mux_b = [("u", top, H)] + mux_rot(theta_b, n) + [("u", top, H)]
-    circ = [("u", top, u.conj().T)]
-    children = [Wc, Wb, Vb, Va]
-    muxes = [mux_c, mux_b, mux_a, []]
-    carry = np.eye(2 ** (n - 1), dtype=complex)
-    for i, (child, mux) in enumerate(zip(children, muxes)):
-        sub, carry = synth(
-            child @ carry, n - 1, want_diag=want_diag or i < len(children) - 1
-        )
-        circ += sub + mux
-    return circ, block_diag(carry, carry)
+    return u, [Wc, Wb, Vb, Va], [mux_c, mux_b, mux_a, []]
 
 
-def decompose(U: np.ndarray) -> tuple[list[tuple], np.ndarray]:
-    """Decompose a unitary of power-of-two dimension, at least two."""
+def level_synth(U: np.ndarray, plan_level):
+    """Decompose one unitary (d, d) or a batch (m, d, d) level by level.
+
+    plan_level(nodes, n) factors every n-qubit node of one level and returns, per node, its
+    top-qubit gate, four children and three multiplexors. A carried diagonal acts on q1 q0 and
+    conjugates each factor C without changing its eigenphases, so nodes are factored without
+    carries, and the carries are applied along each target's chain of two-qubit leaves.
+    Returns (circuit, diagonal) per target, with U = diagonal @ circuit_matrix(circuit, n).
+    """
     U = np.asarray(U, dtype=complex)
-    return synth(U, len(U).bit_length() - 1)
+    if U.ndim == 2:
+        return level_synth(U[None], plan_level)[0]
+    m, n = len(U), U.shape[1].bit_length() - 1
+    if n == 1:
+        return [([("u", 0, V)], np.eye(2, dtype=complex)) for V in U]
+    levels, nodes = [], list(U)
+    for size in range(n, 2, -1):
+        plans = plan_level(nodes, size)
+        levels.append(plans)
+        nodes = [child for _, children, _ in plans for child in children]
+
+    per = len(nodes) // m                       # leaves per target, in circuit order
+    leaves, carries = [], []
+    for t in range(m):
+        carry = np.eye(4, dtype=complex)
+        for j in range(per):
+            circ, carry = leaf(nodes[t * per + j] @ carry, want_diag=j < per - 1)
+            leaves.append(circ)
+        carries.append(carry)
+
+    def assemble(depth: int, i: int) -> list[tuple]:
+        if depth == n - 2:
+            return leaves[i]
+        u, _, muxes = levels[depth][i]
+        circ = [("u", n - depth - 1, u.conj().T)]
+        for c in range(4):
+            circ += assemble(depth + 1, 4 * i + c) + muxes[c]
+        return circ
+
+    eye = np.eye(2 ** (n - 2))
+    return [(assemble(0, t), np.kron(eye, carries[t])) for t in range(m)]
+
+
+def synth(U: np.ndarray):
+    """Decompose one unitary (d, d) or a batch (m, d, d) with the pivot construction.
+
+    All pivot searches of one level, across nodes and targets, run as one batched search.
+    """
+    def plan_level(nodes, n):
+        return [pivot_node(V, n, p) for V, p in zip(nodes, find_pivot(np.array(nodes)))]
+
+    return level_synth(U, plan_level)
 
 
 # Reproducible numerical validation
@@ -472,7 +524,7 @@ def main(argv: list[str] | None = None) -> None:
     for n in args.qubits:
         for sample in range(args.samples):
             target = random_unitary(2**n, rng)
-            circuit, diagonal = decompose(target)
+            circuit, diagonal = synth(target)
             reconstructed = diagonal @ circuit_matrix(circuit, n)
             error = float(np.max(np.abs(target - reconstructed)))
             count = cnot_count(circuit)

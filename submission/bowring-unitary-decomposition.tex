@@ -292,7 +292,7 @@ All experiments were run on a MacBook Pro (M1 series, 2021) using standard linea
 
 The pivot decomposition produces quantum circuits using $(4^{n-2}-1)/3$ fewer CX gates at the cost of added runtime. The counts reported in Fig.~\ref{fig:benchmark}a match the expected recurrence formula.
 
-Each recursive step already costs $O(d^3)$, and each root-search iteration also costs $O(d^3)$, so the overhead should be constant as long as the number of iterations does not grow with $n$. This depends on convergence tolerance and warrants further study: the empirical overhead in Fig.~\ref{fig:benchmark}b is about $2$--$2.5\times$. The CX count is independent of the root-search method, so further runtime improvements may be possible.
+Each recursive step already costs $O(d^3)$, and each root-search iteration also costs $O(d^3)$, so the overhead should be constant as long as the number of iterations does not grow with $n$. This depends on convergence tolerance and warrants further study: the empirical overhead in Fig.~\ref{fig:benchmark}b is about $1.2$--$1.4\times$ with the batched Newton search of App.~\ref{app:par}. The CX count is independent of the root-search method, so further runtime improvements may be possible. Like Block-ZXZ, the decomposition can also be parallelized at each recursion level (App.~\ref{app:par}).
 
 A second pivot applied in reverse to the right-side multiplexor could perhaps save another
 $(4^{n-2}-1)/3$ CX gates, although the two pivots are coupled and would require a joint search.
@@ -305,6 +305,29 @@ Under my supervision, Claude Opus 5.5 (Anthropic) was used to construct all \tex
 
 The formal theorems and proofs of the results outlined in Sec.~\ref{sec:alg} and numerical experiments presented in Sec.~\ref{sec:res}
 are available~\cite{code}.
+
+\appendix
+\section{Numerical implementation details}\label{app:par}
+
+Like Block-ZXZ, the pivot decomposition is parallelizable at each recursion level. The diagonal
+$\Delta$ carried from one child to the next acts on $q_1q_0$, so it conjugates the Block-ZXZ factor,
+$C\mapsto\Delta^\dagger C\Delta$, and leaves the eigenphases of $C$ and the pivot angles unchanged.
+Every node at one level, including its root search, can therefore be decomposed independently.
+Both decompositions in Fig.~\ref{fig:benchmark} run on the same level-by-level schedule, which
+gives the same CX count as the recursion of Sec.~\ref{sec:alg}. The only difference is that the
+pivot searches of one level are solved together as a single batched search.
+
+The root $\beta^\ast$ of~\eqref{eq:P} is found by a Newton search on $[0,\pi]$ that uses three
+properties of the construction. (i)~By~\eqref{eq:sign}, $P(\pi)=-P(0)$, so $[0,\pi]$ brackets a
+root without evaluating $P(\pi)$. (ii)~The slope $P'(\beta)$ is available at little extra cost:
+$C(\beta)$ is $-i$ times the unitary polar factor of $X_g^\dagger Y_g$, whose derivative follows
+from its singular value decomposition, and each eigenphase then moves by
+$\operatorname{Im}(\bar\lambda_k v_k^\dagger C' v_k)$. (iii)~Starting from the root of the quadratic
+through $P(0)$, $P'(0)$ and $P(\pi)$, Newton steps are kept inside the bracket, with bisection
+when a step leaves it. This takes about seven evaluations of $P$ per node, and the search
+returns a root in the same bracket as the existence argument of Sec.~\ref{sec:exist}. The
+nodes of a level iterate together, so each evaluation is one stacked decomposition for the
+whole level.
 
 \begin{thebibliography}{9}
 \bibitem{smb2q} V.~V.~Shende, I.~L.~Markov, S.~S.~Bullock, \emph{Minimal universal two-qubit

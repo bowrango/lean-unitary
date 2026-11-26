@@ -309,8 +309,10 @@ are available~\cite{code}.
 \appendix
 \section{Numerical implementation details}\label{app:par}
 
-The recursive template allows parallelism at each level.
-The matrices can be batched using optimized BLAS functions
+The recursive template allows parallelism at each level, so the matrices of one level can be
+batched. This only removes per-node function-call overhead, which is a minor saving, but it adds the pivot
+search to the batched implementation pattern that a practical Block-ZXZ baseline would use, and
+both decompositions in Fig.~\ref{fig:benchmark} are run this way.
 The practical overhead of the pivot decomposition is just proportional to the root search. I exploit three structures:
 (i)~By~\eqref{eq:sign}, $P(\pi)=-P(0)$, so $[0,\pi]$ brackets a
 root without evaluating $P(\pi)$. 

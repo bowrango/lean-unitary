@@ -21,31 +21,35 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from decomposition import (
-    H, Z, block_zxz, cnot_count, cnot_formula,
-    demultiplex, embed, level_synth, mux_rot, random_unitary, synth, zxz_formula,
+    H, block_zxz, cnot_count, cnot_formula, demultiplex,
+    level_synth, mux_rot, random_unitary, synth, z_diag, zxz_formula,
 )
 
 
 # Baseline synthesis
 
 
-def zxz_node(U: np.ndarray, n: int):
-    """Factor one Block-ZXZ node with the standard boundary folds and no pivot."""
-    m, top = 2 ** (n - 1), n - 1
+def zxz_level(nodes, n: int):
+    """Factor all n-qubit Block-ZXZ nodes of one level (standard boundary folds, no pivot)."""
+    U = np.asarray(nodes)
     A1, A2, B, C = block_zxz(U)
     Va, theta_a, Wa = demultiplex(A1, A2)
-    Vc, theta_c, Wc = demultiplex(np.eye(m, dtype=complex), C)
-    z = embed(Z, [n - 2], n - 1)
-    Vb, theta_b, Wb = demultiplex(Wa @ Vc, z @ Wa @ B @ Vc @ z)
-    mux_c = mux_rot(theta_c, n)[:-1]
-    mux_a = mux_rot(theta_a, n)[::-1][1:]
-    mux_b = [("u", top, H)] + mux_rot(theta_b, n) + [("u", top, H)]
-    return np.eye(2, dtype=complex), [Wc, Wb, Vb, Va], [mux_c, mux_b, mux_a, []]
+    Vc, theta_c, Wc = demultiplex(np.eye(C.shape[-1], dtype=complex), C)
+    z = z_diag(n - 2, n - 1)
+    Vb, theta_b, Wb = demultiplex(Wa @ Vc, z[:, None] * (Wa @ B @ Vc) * z)
+    top = n - 1
+    return [
+        (np.eye(2, dtype=complex), [Wc[i], Wb[i], Vb[i], Va[i]],
+         [mux_rot(theta_c[i], n)[:-1],
+          [("u", top, H)] + mux_rot(theta_b[i], n) + [("u", top, H)],
+          mux_rot(theta_a[i], n)[::-1][1:], []])
+        for i in range(len(U))
+    ]
 
 
-def baseline_synth(U: np.ndarray) -> tuple[list[tuple], np.ndarray]:
-    """Block-ZXZ on the same level-by-level schedule as synth."""
-    return level_synth(U, lambda nodes, n: [zxz_node(V, n) for V in nodes])
+def baseline_synth(U: np.ndarray):
+    """Block-ZXZ on the same level-by-level schedule as synth, with each level batched."""
+    return level_synth(U, zxz_level)
 
 
 def compare(ns, samples: int = 1, seed: int = 0):

@@ -23,7 +23,6 @@ import platform
 import numpy as np
 import scipy
 import scipy.linalg as sl
-from scipy.linalg import polar, schur
 from scipy.optimize import linear_sum_assignment
 
 H = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
@@ -160,29 +159,52 @@ def mux_rot(thetas: np.ndarray, n: int, axis: str = "z") -> list[tuple]:
     return circ
 
 
+def dagger(M: np.ndarray) -> np.ndarray:
+    """Conjugate transpose of a matrix or a stack of matrices."""
+    return M.conj().swapaxes(-1, -2)
+
+
 def demultiplex(
     U1: np.ndarray, U2: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    T, V = schur(U1 @ U2.conj().T, output="complex")
+    """U1 (+) U2 = (I (x) V) D(theta) (I (x) W), for one pair or stacks of pairs.
+
+    The eigenvectors of the unitary U1 U2^dagger come from its Hermitian pencil, as in
+    unitary_phases, followed by one first-order correction with the eigenvalue gaps on the unit
+    circle (the pencil can bring distinct eigenvalues close) and re-orthonormalization.
+    Assumes generic, unclustered spectra.
+    """
+    M = U1 @ dagger(U2)
+    _, V = np.linalg.eigh((M + dagger(M)) / 2 + GAMMA * (M - dagger(M)) / 2j)
+    T = dagger(V) @ M @ V
+    lam = np.diagonal(T, axis1=-2, axis2=-1)
+    I = np.eye(T.shape[-1])
+    V, R = np.linalg.qr(V @ (I + T * (1 - I) / (lam[..., None, :] - lam[..., :, None] + I)))
+    r = np.diagonal(R, axis1=-2, axis2=-1)
+    V = V * (r / np.abs(r))[..., None, :]
+    lam = (V.conj() * (M @ V)).sum(-2)
     # Keep phase factors on the unit circle to prevent recursive norm drift.
-    d = np.exp(0.5j * np.angle(np.diag(T)))
-    W = np.diag(d) @ V.conj().T @ U2
-    thetas = -2 * np.angle(d)
-    return V, thetas, W
+    d = np.exp(0.5j * np.angle(lam))
+    W = d[..., :, None] * (dagger(V) @ U2)
+    return V, -2 * np.angle(d), W
 
 
 def block_zxz(U: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Return the four unitary factors of the Block-ZXZ decomposition."""
-    d = U.shape[0] // 2
-    Xb, Yb, U21, U22 = U[:d, :d], U[:d, d:], U[d:, :d], U[d:, d:]
-    UX, SX = polar(Xb, side="left")
-    UY, SY = polar(Yb, side="left")
-    Cd = 1j * UY.conj().T @ UX
-    C = Cd.conj().T
+    """Return the four unitary factors of the Block-ZXZ decomposition (one node or a stack)."""
+    d = U.shape[-1] // 2
+    Xb, Yb, U21, U22 = U[..., :d, :d], U[..., :d, d:], U[..., d:, :d], U[..., d:, d:]
+
+    def polar_left(M):
+        W, s, Vh = np.linalg.svd(M)
+        return W @ Vh, (W * s[..., None, :]) @ dagger(W)
+
+    UX, SX = polar_left(Xb)
+    UY, SY = polar_left(Yb)
+    Cd = 1j * dagger(UY) @ UX
     A1 = (SX + 1j * SY) @ UX
     A2 = U21 + U22 @ Cd
-    B = 2 * A1.conj().T @ Xb - np.eye(d)
-    return A1, A2, B, C
+    B = 2 * dagger(A1) @ Xb - np.eye(d)
+    return A1, A2, B, dagger(Cd)
 
 
 # Canonical two-qubit synthesis (Shende, Markov, and Bullock)
@@ -381,10 +403,9 @@ def find_pivot(U: np.ndarray, maxiter: int = 60, polish: float = 1e-8):
     raise AssertionError("Pivot search did not converge")
 
 
-def demux_double_fold(C: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Recover the contiguous split at a pivot root and zero its Gray angle."""
-    D = len(C)
-    V, theta, W = demultiplex(np.eye(D, dtype=complex), C)
+def fold_split(V: np.ndarray, theta: np.ndarray, W: np.ndarray):
+    """Order a demultiplexed I (+) C at a pivot root so that its last Gray angle is zero."""
+    D = len(theta)
     S, residual = cyclic_split(theta)
     assert residual <= TOL, f"Unbalanced contiguous split ({residual:.2e})"
     mask = np.ones(D, dtype=bool)
@@ -405,30 +426,54 @@ def demux_double_fold(C: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray
     return V, theta, W
 
 
+def demux_double_fold(C: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Demultiplex I (+) C at a pivot root with its last Gray angle zero."""
+    return fold_split(*demultiplex(np.eye(len(C), dtype=complex), C))
+
+
 def apply_pivot(U: np.ndarray, u: np.ndarray) -> np.ndarray:
-    """Right-multiply by u on the top qubit, without forming a dense embedded gate."""
-    D = len(U) // 2
+    """Right-multiply by u on the top qubit (one node and gate, or stacks of both)."""
+    D = U.shape[-1] // 2
+    L, R = U[..., :D], U[..., D:]
+    u = np.asarray(u)[..., None, None, :, :]
     return np.concatenate(
-        (u[0, 0] * U[:, :D] + u[1, 0] * U[:, D:],
-         u[0, 1] * U[:, :D] + u[1, 1] * U[:, D:]),
-        axis=1,
+        (u[..., 0, 0] * L + u[..., 1, 0] * R, u[..., 0, 1] * L + u[..., 1, 1] * R), axis=-1,
     )
+
+
+def z_diag(qubit: int, n: int) -> np.ndarray:
+    """Diagonal of Z on one qubit of an n-qubit register."""
+    return 1 - 2 * ((np.arange(2**n) >> qubit) & 1)
+
+
+def pivot_level(nodes, n: int, pivots=None):
+    """Factor all n-qubit nodes of one level with their pivots, batched across the level.
+
+    Returns, per node, the pivot gate, four children and three multiplexors.
+    """
+    U = np.asarray(nodes)
+    pivots = find_pivot(U) if pivots is None else pivots
+    u = np.array([rz(a) @ ry(b) for a, b in pivots])
+    A1, A2, B, C = block_zxz(apply_pivot(U, u))
+    Va, theta_a, Wa = demultiplex(A1, A2)
+    Vc, theta_c, Wc = map(np.array, zip(*(
+        fold_split(*f) for f in zip(*demultiplex(np.eye(C.shape[-1], dtype=complex), C)))))
+    z_hi = z_diag(n - 2, n - 1)
+    z_both = z_hi * z_diag(0, n - 1)
+    Vb, theta_b, Wb = demultiplex(Wa @ Vc, z_hi[:, None] * (Wa @ B @ Vc) * z_both)
+    top = n - 1
+    return [
+        (u[i], [Wc[i], Wb[i], Vb[i], Va[i]],
+         [mux_rot(theta_c[i], n)[:-3],
+          [("u", top, H)] + mux_rot(theta_b[i], n) + [("u", top, H)],
+          mux_rot(theta_a[i], n)[::-1][1:], []])
+        for i in range(len(U))
+    ]
 
 
 def pivot_node(U: np.ndarray, n: int, pivot: tuple[float, float]):
     """Factor one node with its pivot: the pivot gate, four children and three multiplexors."""
-    top = n - 1
-    u = rz(pivot[0]) @ ry(pivot[1])
-    A1, A2, B, C = block_zxz(apply_pivot(U, u))
-    Va, theta_a, Wa = demultiplex(A1, A2)
-    Vc, theta_c, Wc = demux_double_fold(C)
-    z_hi = embed(Z, [n - 2], n - 1)
-    z_both = z_hi @ embed(Z, [0], n - 1)
-    Vb, theta_b, Wb = demultiplex(Wa @ Vc, z_hi @ Wa @ B @ Vc @ z_both)
-    mux_c = mux_rot(theta_c, n)[:-3]
-    mux_a = mux_rot(theta_a, n)[::-1][1:]
-    mux_b = [("u", top, H)] + mux_rot(theta_b, n) + [("u", top, H)]
-    return u, [Wc, Wb, Vb, Va], [mux_c, mux_b, mux_a, []]
+    return pivot_level([U], n, [pivot])[0]
 
 
 def level_synth(U: np.ndarray, plan_level):
@@ -477,12 +522,9 @@ def level_synth(U: np.ndarray, plan_level):
 def synth(U: np.ndarray):
     """Decompose one unitary (d, d) or a batch (m, d, d) with the pivot construction.
 
-    All pivot searches of one level, across nodes and targets, run as one batched search.
+    Each level, across nodes and targets, is factored as one batch, including its pivot search.
     """
-    def plan_level(nodes, n):
-        return [pivot_node(V, n, p) for V, p in zip(nodes, find_pivot(np.array(nodes)))]
-
-    return level_synth(U, plan_level)
+    return level_synth(U, pivot_level)
 
 
 # Reproducible numerical validation

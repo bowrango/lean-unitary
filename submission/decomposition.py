@@ -23,7 +23,7 @@ import numpy as np
 import scipy
 import scipy.linalg as sl
 from scipy.linalg import polar, schur
-from scipy.optimize import brentq, linear_sum_assignment
+from scipy.optimize import linear_sum_assignment
 
 H = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
 Z = np.diag([1, -1]).astype(complex)
@@ -47,12 +47,6 @@ def random_unitary(d: int, rng: np.random.Generator) -> np.ndarray:
     z = (rng.normal(size=(d, d)) + 1j * rng.normal(size=(d, d))) / np.sqrt(2)
     q, r = np.linalg.qr(z)
     return q * (np.diag(r) / np.abs(np.diag(r)))
-
-
-def unitary_polar(M: np.ndarray) -> np.ndarray:
-    """Return the unitary polar factor without forming the positive factor."""
-    left, _, right = np.linalg.svd(M)
-    return left @ right
 
 
 def block_diag(A: np.ndarray, B: np.ndarray) -> np.ndarray:
@@ -278,18 +272,6 @@ def cyclic_split(mu: np.ndarray) -> tuple[np.ndarray, float]:
     return order[start:start + half], float(residuals[start])
 
 
-def ordered_phases(mu: np.ndarray, phase: float) -> np.ndarray:
-    """Lift sorted principal phases to one turn with the specified total phase."""
-    phases = np.sort(mu)
-    total = phases.sum()
-    assert abs(wrap(total - phase)) <= np.pi / 2, (
-        "Determinant phase disagrees with the eigenphases"
-    )
-    turns = round((phase - total) / (2 * np.pi))
-    whole, shift = divmod(turns, len(phases))
-    return np.r_[phases[shift:], phases[:shift] + 2 * np.pi] + 2 * np.pi * whole
-
-
 def _choose_alpha(rho: np.ndarray) -> tuple[float, np.ndarray]:
     """Choose the widest interval with equal upper/lower half-plane counts."""
     crossings = np.sort(np.mod(-np.angle(rho), np.pi))
@@ -305,49 +287,76 @@ def _choose_alpha(rho: np.ndarray) -> tuple[float, np.ndarray]:
     return best[1], best[2]
 
 
-def find_pivot(U: np.ndarray) -> tuple[float, float]:
-    """Balance the middle-half eigenphase sum along a cached pivot path."""
+def _imbalance_and_slope(
+    beta: float, K: np.ndarray, A: np.ndarray, B: np.ndarray, tau: np.ndarray,
+) -> tuple[float, float]:
+    """Imbalance P(beta) of Eq. (P) and its derivative.
+
+    With M = K + cos(beta) A + sin(beta) B = W diag(s) V^dagger, C = -i W V^dagger, and the
+    polar factor has derivative W Omega V^dagger with Omega_ij = (G_ij - conj(G_ji)) / (s_i + s_j)
+    and G = W^dagger M' V. Each eigenphase of C moves by Im(conj(lambda) v^dagger C' v).
+    """
+    M = K + np.cos(beta) * A + np.sin(beta) * B
+    dM = -np.sin(beta) * A + np.cos(beta) * B
+    W, s, Vh = np.linalg.svd(M)
+    G = W.conj().T @ dM @ Vh.conj().T
+    C = -1j * (W @ Vh)
+    dC = -1j * (W @ ((G - G.conj().T) / (s[:, None] + s[None, :])) @ Vh)
+    Ch = C.conj().T
+    _, V = sl.eigh((C + Ch) / 2 + GAMMA * (C - Ch) / 2j, driver="evd")
+    lam = np.einsum("ij,ij->j", V.conj(), C @ V)
+    mu = np.angle(lam)
+    dmu = (np.conj(lam) * np.einsum("ij,ij->j", V.conj(), dC @ V)).imag
+
+    # Rank the phases and lift them to one turn whose sum is the determinant phase sigma(beta).
+    c, sn = np.cos(beta / 2), np.sin(beta / 2)
+    sigma = np.sum(np.angle(tau) + np.angle(c - sn / tau) - np.angle(c + sn * tau))
+    shift = round((sigma - mu.sum()) / (2 * np.pi)) % len(mu)
+    order = np.roll(np.argsort(mu), -shift)
+    nu = mu[order]
+    nu[len(mu) - shift:] += 2 * np.pi
+    q = len(mu) // 4
+    sign = np.r_[-np.ones(q), np.ones(2 * q), -np.ones(q)]
+    return float(sign @ nu / 2), float(sign @ dmu[order] / 2)
+
+
+def find_pivot(U: np.ndarray, maxiter: int = 60) -> tuple[float, float]:
+    """Find pivot angles (alpha, beta) with a balanced split, for a generic target.
+
+    alpha gives equal half-plane counts of the tau_k. Since P(pi) = -P(0), [0, pi] brackets a
+    root of P without evaluating P(pi). Newton steps with the analytic slope start from the root
+    of the quadratic through P(0), P'(0) and P(pi), with bisection whenever a step leaves the
+    bracket or converges slowly.
+    """
     D = len(U) // 2
     X, Y = U[:D, :D], U[:D, D:]
-    # These direct pivots also cover simple singular blocks, such as Y = 0.
-    for beta in (0.0, np.pi / 2):
-        c, s = np.cos(beta / 2), np.sin(beta / 2)
-        C = (-1j * unitary_polar(c * X + s * Y).conj().T
-             @ unitary_polar(-s * X + c * Y))
-        if cyclic_split(unitary_phases(C))[1] <= ROOT_TOL:
-            return 0.0, beta
     alpha, tau = _choose_alpha(np.linalg.eigvals(np.linalg.solve(X, Y)))
-
-    # Cache X_g^dagger Y_g = K + cos(beta) A + sin(beta) B.
     cross = np.exp(1j * alpha) * (X.conj().T @ Y)
     A, K = (cross + cross.conj().T) / 2, (cross - cross.conj().T) / 2
     B = (Y.conj().T @ Y - X.conj().T @ X) / 2
-    tau_phases = np.angle(tau)
-    quarter = D // 4
+    tol = ROOT_TOL / 4
 
-    def imbalance(beta: float) -> float:
-        C = -1j * unitary_polar(K + np.cos(beta) * A + np.sin(beta) * B)
-        c, s = np.cos(beta / 2), np.sin(beta / 2)
-        phase = np.sum(
-            tau_phases + np.angle(c - s / tau) - np.angle(c + s * tau)
-        )
-        theta = ordered_phases(unitary_phases(C), phase)
-        middle = theta[quarter:3 * quarter]
-        outer = np.r_[theta[:quarter], theta[3 * quarter:]]
-        return float(np.sum(middle - outer) / 2)
-
-    lo, hi = imbalance(0.0), imbalance(np.pi)
-    if 2 * abs(lo) <= ROOT_TOL:
+    f0, d0 = _imbalance_and_slope(0.0, K, A, B, tau)
+    if abs(f0) <= tol:
         return alpha, 0.0
-    if 2 * abs(hi) <= ROOT_TOL:
-        return alpha, np.pi
-    assert np.signbit(lo) != np.signbit(hi), "Pivot does not bracket a root"
-    beta, result = brentq(
-        imbalance, 0.0, np.pi, xtol=1e-15,
-        rtol=4 * np.finfo(float).eps, maxiter=200, full_output=True, disp=False,
-    )
-    assert result.converged and 2 * abs(imbalance(beta)) <= TOL
-    return alpha, beta
+    curv = (-2 * f0 - d0 * np.pi) / np.pi**2
+    roots = [t.real for t in np.roots([curv, d0, f0]) if abs(t.imag) < 1e-12 and 0 < t.real < np.pi]
+    beta = min(roots, key=lambda t: abs(t - np.pi / 2)) if roots else np.pi / 2
+    lo, hi, width = 0.0, np.pi, np.pi
+    for _ in range(maxiter):
+        f, df = _imbalance_and_slope(beta, K, A, B, tau)
+        if abs(f) <= tol or hi - lo <= 1e-15:
+            assert 2 * abs(f) <= TOL, "Pivot search did not converge"
+            return alpha, beta
+        if np.signbit(f) == np.signbit(f0):
+            lo = beta
+        else:
+            hi = beta
+        step = beta - f / df
+        if not lo < step < hi or abs(f) > 0.5 * width * abs(df):
+            step = (lo + hi) / 2
+        width, beta = hi - lo, step
+    raise AssertionError("Pivot search did not converge")
 
 
 def demux_double_fold(C: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
